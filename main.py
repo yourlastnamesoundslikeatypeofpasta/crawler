@@ -1,7 +1,6 @@
 from collections import deque
 from bs4 import BeautifulSoup
 from urllib.parse import urlsplit
-import parts as parts
 import base_url
 import sys
 import requests
@@ -37,7 +36,7 @@ while len(new_urls):
     # extract base url to resolve relative link
     url_base = base_url(url)
     print('Test line passed')
-
+    parts = urlsplit(url)
     if parts.scheme != 'mailto' and parts.scheme != '#':
         path = url[:url.rfind('/') + 1] if '/' in parts.path else url
     else:
