@@ -44,7 +44,8 @@ def main():
 
         # extract url to resolve relative link
         parts = urlsplit(url)
-        if parts.scheme != 'mailto' and parts.scheme != '#':
+        print(parts)
+        if parts.scheme != 'mailto' and parts.scheme != '#': # this code block may unnecessary
             # if '/' in parts.path:
             #     path = url[:url.rfind('/') + 1]
             #     print(f'Line 50: {path}', file=sys.stderr)
@@ -130,14 +131,16 @@ def main():
             try:
                 if 'href' in anchor.attrs or anchor.attrs['href'].find('mailto') == -1:
                     link = anchor.attrs["href"]
-                    # print(f'The link: line 133 {link}')
+                else:
+                    print(f'line 134: Link: {link} didnt have href, WARNING')
             except KeyError:
                 print(f'Error: KeyError, Link: {url}', file=sys.stderr)
                 continue
 
             # resolve relative links
             if link.startswith('/'):
-                link = url_base + link
+                link = path + link # testing this line
+                # link = url_base + link
 
             # check link for criteria
             exclude_bool = False
