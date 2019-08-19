@@ -1,9 +1,10 @@
+"""Take a raw URL and extract base URL"""
 from urllib.parse import urlsplit
 
 
 def base_url(url):
     """
-    Take raw URL and extract base URL
+    Take a raw URL and extract base URL
     :param url: Raw URL: http://google.com/q=dog%sprinting%on%treadmill
     :return: http://google.com
     """
