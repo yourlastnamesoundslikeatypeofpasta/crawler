@@ -48,7 +48,7 @@ while len(new_urls):
         continue
 
     # get url's HTML
-    print(f"Processing {url}")
+    print(f"Processing {url}", file=sys.stderr)
     # try to get html for url
     try:
         response = requests.get(url, timeout=10).text  # timeout if no response within 10 seconds
@@ -86,18 +86,17 @@ while len(new_urls):
     # create a beautiful soup for the html document, and then grab
     soup = BeautifulSoup(response, features="html.parser")
 
-    # QueueCount counts how many new urls will be added to the queue list for base URL
-    queue_count = 0
-
-    # queueCounter[url_base] will default to the remaining balance of
-    queue_counter.setdefault(url_base, queue_count)
+    # Only queue up to 1500 links for each base url
+    queue_counter.setdefault(url_base, 1)
 
     # find and process all the anchors in the document
     for anchor in soup.find_all("a"):
-        # Checks to see if urlcount + what was added in queue will be over the urlcap limit
+
+        # Checks to see if url_count + what was added in queue will be over the urlcap limit
         if queue_counter[url_base] >= url_cap:
             print(f'Queue Capped: {url_base}: {queue_counter[url_base]}')
             break
+
         # extract link url from the anchor
         try:
             if 'href' in anchor.attrs or anchor.attrs['href'].find('mailto') == -1:
@@ -111,24 +110,27 @@ while len(new_urls):
         elif not link.startswith('http'):
             link = path + link
 
-        # skips over links with the following extensions
+        # skips over links with the following words in the link
+        exclude_bool = False
         for extension in exclude_ext:
             if extension in link:
-                continue
+                exclude_bool = True
+                break
+        if exclude_bool:
+            continue
 
         # add the new url to the queue if it was not enqueued nor processed yet
-        if (link not in new_urls) and (url_base in link) and (link not in processed_urls):
+        if (url_base in link) and (link not in processed_urls):
             new_urls.append(link)
             print(f'New URL Added: {link}')
-            queue_count += 1
-    queue_counter[url_base] += queue_count # TODO: Tell scraper not to add more links if url cap is reached.
+            queue_counter[url_base] += 1
 
     # print out found email
-    for url,email_list in email_dict.items():
+    for url, email_list in email_dict.items():
         print(url, email_list)
 
     # print out how many urls the base url has left to scan
-    print(queue_counter[url_base], f'in queue for {url_base}') # TODO:
+    print(queue_counter[url_base] - len(processed_urls), f'in queue for {url_base}')
 
     # print out how many urls are left to scan
     print(len(new_urls), 'to scan') # FIXME: length of new urls is below the queue. figure out why
