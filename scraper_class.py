@@ -23,35 +23,44 @@ class Scraper:
                    'specialty']
 
     def __init__(self, url):
-        self.url = deque([url])
+        self.new_urls = deque([url])
 
     def get_url_base(self):
-
         # get the url base address
-        url = self.url[0]
+        url = self.new_urls[0]
         return base_url(url)
 
     def get_next_url(self):
-
-        # get the next url in deque
-        url = self.url[-1]
+        # get the next url in deque and move the url from new_urls to
+        url = self.new_urls[-1]
+        self.add_url_to_processed()
         return url
 
-    def process_url(self):
+    def add_url_to_processed(self):
         # add the url to the processed urls list
-        self.processed_urls.append(self.url)
-        print(f'{self.url} added to Processed URLS:{self.processed_urls}')
+        url = self.new_urls.popleft()
+        self.processed_urls.append(url)
+        print(f'{url} added to Processed URLS:{self.processed_urls}')
 
-    def get_parts(self):
-        url = self.url
-        url_base = self.get_url_base()
-        parts = urlsplit(url_base)
+    def add_url_counter(self):
+        # increment the url counter in url_counter by 1
+        self.url_counter.setdefault(self.get_url_base(), 0)
+        self.url_counter[self.get_url_base()] += 1
 
-        if parts.scheme != 'mailto' and parts.scheme != '#':
-            if'/' in parts.path:
-                path = self.url[:self.url.rfind]
+    def is_url_capped(self):
+        # Return True if the url is capped, False if it isn't
+        if self.url_counter[self.get_url_base()] >= self.url_cap:
+            return True
+        return False
+
+    def get_url_html(self, url):
+        print(f'Processing {self.new_urls}')
 
 
 url_1 = Scraper('google.com')
-print(url_1.get_url_base())
+# print(url_1.url_counter)
+# for i in range(1500):
+#     url_1.add_url_counter()
+# print(url_1.url_counter)
+# print(url_1.is_url_capped())
 print(url_1.get_next_url())
