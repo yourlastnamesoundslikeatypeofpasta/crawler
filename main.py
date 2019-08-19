@@ -16,32 +16,44 @@ def main():
     Main func.
     :return: A list of e-mails scraped from the input website.
     """
-    # request_url = input('What is the URL you would like to scrape?\n: ')
-    new_urls = deque(['https://www.smh.com.au/contact-us'])
-    processed_urls = []
-    url_cap = 1500
-    exclude_ext = ['image', 'pdf', 'jpg', 'png', 'gif', 'xlsx', 'spx',
-                   'mp3', 'csv', 'wma', 'provider', 'specialtie', 'pptx',
-                   'asp', 'mp4', 'download', 'javascript', 'tel:', 'pdf']
 
+    # ask the user the website they would like to scrape
+    request_url = input('What is the URL you would like to scrape?\n: ').rstrip()
+    # request_url = 'https://www.smh.com.au/contact-us'
+    new_urls = deque([request_url])
+
+    # exit the program if the user didn't enter in a url
     if not bool(new_urls):
         sys.exit()
 
+    exclude_ext = ['image', 'pdf', 'jpg', 'png', 'gif', 'xlsx', 'spx',
+                   'mp3', 'csv', 'wma', 'provider', 'specialtie', 'pptx',
+                   'asp', 'mp4', 'download', 'javascript', 'tel:', 'pdf',
+                   'specialty']
     email_dict = {}
     url_counter = {}
     queue_counter = {}
+    processed_urls = []
+    url_cap = 1500
 
     while len(new_urls):
         # grab the new url from new_urls and add it to the processed urls list
         url = new_urls.popleft()
         processed_urls.append(url)
-
-        # extract base url to resolve relative link
         url_base = base_url(url)
+
+        # extract url to resolve relative link
         parts = urlsplit(url)
         if parts.scheme != 'mailto' and parts.scheme != '#':
+            # if '/' in parts.path:
+            #     path = url[:url.rfind('/') + 1]
+            #     print(f'Line 50: {path}', file=sys.stderr)
+            # else:
+            #     path = url
+            #     print(f'Line 53: {path}', file=sys.stderr)
             path = url[:url.rfind('/') + 1] if '/' in parts.path else url
         else:
+            print('Continuing')
             continue
 
         # Increment the url cap + 1
@@ -58,12 +70,22 @@ def main():
         # try to get html for url
         try:
             response = requests.get(url, timeout=10).text  # timeout if no response within 10 seconds
+
         except (requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema,
                 requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                 requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
             # ignore pages with errors/timeout
             print(f'ERROR {e}: Link Skipped!')
             continue
+
+        # FIXME: Formulate a regex that will find 404 errors
+        #   print out if page throws a 404 error
+        # four_oh_four_re = re.compile(r'404')
+        # four_oh_four_mo = four_oh_four_re.findall(response)
+        # if four_oh_four_mo:
+        #     print(f'ERROR: 404!', file=sys.stderr)
+        #     print(response, file=sys.stderr)
+        #     continue
 
         # extract all email addresses from response.text and append them to new_emails
         new_emails = list(set(re.findall(r"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+", response, re.I)))
@@ -108,26 +130,46 @@ def main():
             try:
                 if 'href' in anchor.attrs or anchor.attrs['href'].find('mailto') == -1:
                     link = anchor.attrs["href"]
+                    # print(f'The link: line 133 {link}')
             except KeyError:
-                print(f'Error: KeyError, Link: {url}')
+                print(f'Error: KeyError, Link: {url}', file=sys.stderr)
+                continue
 
             # resolve relative links
             if link.startswith('/'):
                 link = url_base + link
-            elif not link.startswith('http'):
-                link = path + link
 
-            # skips over links with the following words in the link
+            # check link for criteria
             exclude_bool = False
             for extension in exclude_ext:
+                # skips over links with the following keywords from exclude_ext
                 if extension in link:
                     exclude_bool = True
+                    print(f'Extension: {extension} in {link}')
                     break
             if exclude_bool:
+                print(f'Excluded text found in link')
                 continue
-
-            # add the new url to the queue if it was not enqueued nor processed yet
-            if (url_base in link) and (link not in processed_urls):
+            elif link in processed_urls:
+                print(f'Link: {link} in processed urls.')
+                continue
+            elif link in new_urls:
+                print(f'Link: {link} in new urls')
+                continue
+            elif link.startswith('mailto:'):
+                # Slice 'mailto:' from link and add the email to the email list if it isn't in the list
+                email_from_link = link[7:]
+                try:
+                    email_list = email_dict[url_base]
+                    if email_from_link not in email_list:
+                        email_list.append(email_from_link)
+                except KeyError:
+                    email_dict.setdefault(url_base, [email_from_link])
+                    continue
+            elif url_base not in link:
+                print(f'Link: {link} doesnt have url base {url_base}')
+                continue
+            else:
                 new_urls.append(link)
                 print(f'New URL Added: {link}')
                 queue_counter[url_base] += 1
