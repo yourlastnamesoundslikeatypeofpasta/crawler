@@ -109,7 +109,7 @@ class Scraper:
         # TODO: TEST ME!
         # FIXME: Turn me into a class method
         # increment the url counter in url_counter by 1
-        self.url_counter.setdefault(self.get_current_base_url()), 0)
+        self.url_counter.setdefault(self.get_current_base_url(), 0)
         self.url_counter[self.get_current_base_url()] += 1 # FIXME: Fix end of statement, create another
                                                            #    method for setting url_counter.setdefault(base_url, 0)
 
@@ -122,12 +122,13 @@ class Scraper:
         return False
 
 url_1 = Scraper('google.com')
+print(url_1)
 # print(url_1.url_counter)
 # for i in range(1500):
 #     url_1.add_url_counter()
 # print(url_1.url_counter)
 # print(url_1.is_url_capped())
 # print(url_1.get_next_url())
-html = url_1.set_response_html()
+# html = url_1.set_response_html()
 
-print(url_1.response)
+# print(url_1.response)
