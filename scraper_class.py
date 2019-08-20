@@ -23,38 +23,90 @@ class Scraper:
                    'specialty']
 
     def __init__(self, url):
-        self.new_urls = deque([url])
+        # Check if url is a string and over-write it as a list if it is
+        if type(url) == str:
+            url = [url]
 
-    def get_url_base(self):
-        # get the url base address
-        url = self.new_urls[0]
-        return base_url(url)
+        self.new_urls = deque(url)
+        self.response = None
+        self.current_url = None
+
+    def get_new_urls(self):
+        return self.new_urls
+
+    def get_current_url(self):
+        return self.current_url
+
+    def get_current_base_url(self):
+        return base_url(self.get_current_url())
 
     def get_next_url(self):
-        # get the next url in deque and move the url from new_urls to
-        url = self.new_urls[-1]
-        self.add_url_to_processed()
-        return url
+        # get the next url in deque
+        return self.new_urls[-1]
 
-    def add_url_to_processed(self):
-        # add the url to the processed urls list
-        url = self.new_urls.popleft()
+    def set_new_urls(self):
+        new_urls = input("Please enter the name of the website you'd like to scrape\n: ")
+        self.new_urls = [new_urls]
+
+    def set_current_url(self):
+        # get the url from new_urls, move url to processed_urls, return url
+        url = base_url(self.new_urls.popleft())
         self.processed_urls.append(url)
         print(f'{url} added to Processed URLS:{self.processed_urls}')
+        self.current_url = url
+
+    def set_response(self):
+        # Get current url and set response to the HTML received
+        url = self.get_current_url()
+        try:
+            response = requests.get(url, timeout=10).text
+            self.response = response
+        except (requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema,
+                requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
+                requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
+            print(f'Link Error: {e}')
 
     def add_url_counter(self):
         # increment the url counter in url_counter by 1
-        self.url_counter.setdefault(self.get_url_base(), 0)
-        self.url_counter[self.get_url_base()] += 1
+        self.url_counter.setdefault(self.get_current_base_url()), 0)
+        self.url_counter[self.get_current_base_url()] += 1
 
     def is_url_capped(self):
         # Return True if the url is capped, False if it isn't
-        if self.url_counter[self.get_url_base()] >= self.url_cap:
+        if self.url_counter.get(self.get_current_base_url()) >= self.url_cap:
             return True
         return False
 
-    def get_url_html(self, url):
-        print(f'Processing {self.new_urls}')
+    def set_email_dict_from_response(self):
+        # Uses the email regex to extract the emails from response and adds the new emails to list if it isn't already
+        # in the list
+
+        # get new emails from response html
+        new_emails = list(set(re.findall(r"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+",
+                                         self.response, re.I)))
+
+        # check if any of the emails in new_emails are in the email_dict, remove email if so
+        if new_emails:
+            new_emails = [i.lower() for i in new_emails]
+            try:
+                captured_url_emails = self.email_dict.get(self.get_current_base_url())
+                if new_emails:
+                    for email in new_emails:
+                        if email in captured_url_emails:
+                            new_emails.remove(email)
+            except KeyError:
+                for email_list in self.email_dict.values():
+                    for e_mail in email_list:
+                        if e_mail in new_emails:
+                            new_emails.remove(e_mail)
+
+            # Add new emails to the correct dictionary or add an entry if there isn't one
+            try:
+                email_list = self.email_dict.get(self.get_current_base_url())
+                for email in new_emails:
+                    email_list.append(email)
+            except KeyError:
+                self.email_dict.setdefault(self.get_current_base_url(), new_emails)
 
 
 url_1 = Scraper('google.com')
@@ -63,4 +115,7 @@ url_1 = Scraper('google.com')
 #     url_1.add_url_counter()
 # print(url_1.url_counter)
 # print(url_1.is_url_capped())
-print(url_1.get_next_url())
+# print(url_1.get_next_url())
+html = url_1.set_response_html()
+
+print(url_1.response)
