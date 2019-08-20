@@ -110,7 +110,8 @@ class Scraper:
         # FIXME: Turn me into a class method
         # increment the url counter in url_counter by 1
         self.url_counter.setdefault(self.get_current_base_url()), 0)
-        self.url_counter[self.get_current_base_url()] += 1
+        self.url_counter[self.get_current_base_url()] += 1 # FIXME: Fix end of statement, create another
+                                                           #    method for setting url_counter.setdefault(base_url, 0)
 
     def is_url_capped(self):
         # TODO: TEST ME!
