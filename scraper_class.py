@@ -24,7 +24,7 @@ class Scraper:
 
     def __init__(self, url):
         # Check if url is a string and over-write it as a list if it is
-        if type(url) == str:
+        if type(url) == str: # TODO: TEST ME!
             url = [url]
 
         self.new_urls = deque(url)
@@ -32,23 +32,29 @@ class Scraper:
         self.current_url = None
 
     def get_new_urls(self):
+        # TODO: TEST ME!
         return self.new_urls
 
     def get_current_url(self):
+        # TODO: TEST ME!
         return self.current_url
 
     def get_current_base_url(self):
+        # TODO: TEST ME!
         return base_url(self.get_current_url())
 
     def get_next_url(self):
+        # TODO: TEST ME!
         # get the next url in deque
         return self.new_urls[-1]
 
     def set_new_urls(self):
+        # TODO: TEST ME!
         new_urls = input("Please enter the name of the website you'd like to scrape\n: ")
         self.new_urls = [new_urls]
 
     def set_current_url(self):
+        # TODO: TEST ME!
         # get the url from new_urls, move url to processed_urls, return url
         url = base_url(self.new_urls.popleft())
         self.processed_urls.append(url)
@@ -56,6 +62,7 @@ class Scraper:
         self.current_url = url
 
     def set_response(self):
+        # TODO: TEST ME!
         # Get current url and set response to the HTML received
         url = self.get_current_url()
         try:
@@ -66,18 +73,8 @@ class Scraper:
                 requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
             print(f'Link Error: {e}')
 
-    def add_url_counter(self):
-        # increment the url counter in url_counter by 1
-        self.url_counter.setdefault(self.get_current_base_url()), 0)
-        self.url_counter[self.get_current_base_url()] += 1
-
-    def is_url_capped(self):
-        # Return True if the url is capped, False if it isn't
-        if self.url_counter.get(self.get_current_base_url()) >= self.url_cap:
-            return True
-        return False
-
     def set_email_dict_from_response(self):
+        # TODO: TEST ME!
         # Uses the email regex to extract the emails from response and adds the new emails to list if it isn't already
         # in the list
 
@@ -108,6 +105,20 @@ class Scraper:
             except KeyError:
                 self.email_dict.setdefault(self.get_current_base_url(), new_emails)
 
+    def add_url_counter(self):
+        # TODO: TEST ME!
+        # FIXME: Turn me into a class method
+        # increment the url counter in url_counter by 1
+        self.url_counter.setdefault(self.get_current_base_url()), 0)
+        self.url_counter[self.get_current_base_url()] += 1
+
+    def is_url_capped(self):
+        # TODO: TEST ME!
+        # FIXME: Turn me into a class method
+        # Return True if the url is capped, False if it isn't
+        if self.url_counter.get(self.get_current_base_url()) >= self.url_cap:
+            return True
+        return False
 
 url_1 = Scraper('google.com')
 # print(url_1.url_counter)
