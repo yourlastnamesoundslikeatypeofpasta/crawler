@@ -132,7 +132,7 @@ def main():
                 if 'href' in anchor.attrs or anchor.attrs['href'].find('mailto') == -1:
                     link = anchor.attrs["href"]
                 else:
-                    print(f'line 134: Link: {link} didnt have href, WARNING')
+                    print(f'line 134: Link: {anchor} didnt have href, WARNING')
             except KeyError:
                 print(f'Error: KeyError, Link: {url}', file=sys.stderr)
                 continue
