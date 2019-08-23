@@ -38,8 +38,6 @@ class Scraper:
         self.poss_link = None
 
         # Create a default dictionary entry for each website in email_dict, url_counter, queue_counter
-        # TODO: Remove all try: except: statements from methods that look for a dictionary value and then create it,
-        #  if not found.
         for link in url:
             self.email_dict.setdefault(base_url(link), [])
             self.url_counter.setdefault(base_url(link), 0)
@@ -86,17 +84,6 @@ class Scraper:
                 requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
             print(f'Link Error: {e}')
 
-    def set_email_dict_default(self):
-        # adds an entry into the email dict, 'base_url': []
-        self.email_dict.setdefault(self.get_current_base_url(), [])
-
-    def set_default_url_counter(self):
-        self.url_counter.setdefault(self.get_current_base_url(), 0)
-
-    def set_default_queue_counter(self):
-        # set queue counter to default, 'url_base': 1
-        self.queue_counter.setdefault(self.get_current_base_url(), 1)
-
     def get_email_with_html_parser(self):
         # For some reason using beautiful soup automatically converts unicode chars into letters
         # So using beautiful soup and looping through each tag and checking if the tag contains an email that has
@@ -107,7 +94,7 @@ class Scraper:
         for anchor in soup.find_all('a'):
             print(anchor)
             new_emails = re.findall(r"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+",
-                                             str(anchor), re.I)
+                                    str(anchor), re.I)
             if new_emails:
                 if len(new_emails) > 2:
                     print('More than 1 email found in link. Refer to .get_email_with_html_parser')
@@ -130,19 +117,12 @@ class Scraper:
             self.add_email(new_emails)
         else:
             new_emails = self.get_email_with_html_parser()
-            # Repeated code from line 119, create a method to add emails to email_dict
             if new_emails:
                 self.add_email(new_emails)
-            else:
-                print(f'No Emails Found with Beautiful Soup Parser')
 
     def add_email(self, new_email_list):
         # If email in list isn't in email dict, add it, else, remove it from email list
-        try:
-            emails_frm_email_dict = self.email_dict[self.get_current_base_url()]
-        except KeyError:
-            self.set_email_dict_default()
-            emails_frm_email_dict = self.email_dict[self.get_current_base_url()]
+        emails_frm_email_dict = self.email_dict[self.get_current_base_url()]
         for email in new_email_list:
             if email in emails_frm_email_dict:
                 continue
@@ -158,18 +138,12 @@ class Scraper:
 
     def add_queue_counter(self):
         # increment url base in queue counter by one
-        try:
-            self.queue_counter[self.get_current_base_url()] += 1
-        except KeyError:
-            print(f'KeyError: Create a default entry for {self.get_current_base_url()} with .set_default_queue_counter')
+        self.queue_counter[self.get_current_base_url()] += 1
 
     def is_url_capped(self):
         # Return True if the url is capped, False if it isn't
-        if self.url_counter.get((self.get_current_base_url())):
-            if self.url_counter.get(self.get_current_base_url()) >= self.url_cap:
-                return True
-            return False
-        self.set_default_url_counter()
+        if self.url_counter.get(self.get_current_base_url()) >= self.url_cap:
+            return True
         return False
 
     def is_poss_link_a_link(self):
@@ -205,7 +179,6 @@ class Scraper:
     def get_new_urls_from_html(self):
         # get new url links from html and add them to the new urls deque()
         soup = BeautifulSoup(self.response, features='html.parser')
-        self.set_default_queue_counter()
 
         # Go through every link in html and add it to list
         for anchor in soup.find_all('a'):
@@ -242,6 +215,3 @@ class Scraper:
             print(f'Emails Found: {link}')
             for email in email_list:
                 print(f'\t\t{email}')
-
-
-
