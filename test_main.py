@@ -9,6 +9,6 @@ if from_string_or_list == 'l':
 else:
     input_url = input('Enter your url\n: ')
 url = Scraper(input_url)
-url.sleep_time = 0
+url.sleep_time = 2
 url.scrape()
 print(f'Urls Scraped: {url.get_total_urls_scraped()}')
