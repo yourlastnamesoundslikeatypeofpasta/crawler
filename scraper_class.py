@@ -1,5 +1,6 @@
 """A class version of main.py"""
 import re
+import os
 import sys
 import string
 import time
@@ -55,30 +56,54 @@ class Scraper:
         # A possible link that may have been found from the HTML
         self.poss_link = None
 
-        # Create a default dictionary entry for each website in email_dict, url_counter, queue_counter
+        # Create a default dictionary entry for each website in email_dict
         for link in url:
             self.email_dict.setdefault(base_url(link), [])
             self.url_counter.setdefault(base_url(link), 0)
             self.queue_counter.setdefault(base_url(link), 0)
 
     def get_new_urls(self):
+        """
+        Get the new_urls list.
+        :return: new_url list.
+        """
         return self.new_urls
 
     def get_current_url(self):
+        """
+        Get the current url.
+        :return: The current url.
+        """
         return self.current_url
 
     def get_current_base_url(self):
+        """
+        Get the current base url.
+        :return: Base url.
+        """
         return base_url(self.get_current_url())
 
     def get_next_url(self):
+        """
+        Get the next url in new_urls.
+        :return: Get the next url.
+        """
         # get the next url in deque
         return self.new_urls[-1]
 
     def get_email_with_html_parser(self):
+        """
+        If get_email_from_response doesn't work, then go through each <a> tag,
+        use regex in each tag, if the tag has an email add it to the email_list.
+
+        For some reason using beautiful soup automatically converts
+        unicode chars into letters. So using beautiful soup and looping through
+        each tag and checking if the tag contains an email that has been decoded
+        with beautiful soup is the best option, make this comment prettier in
+        the future please
+        :return: email_list
+        """
         # TODO: Look into turning this into a static method
-        # For some reason using beautiful soup automatically converts unicode chars into letters
-        # So using beautiful soup and looping through each tag and checking if the tag contains an email that has
-        # been decoded with beautiful soup is the best option, make this comment prettier in the future please
         soup = BeautifulSoup(self.response, features='html.parser')
         email_list = []
 
@@ -96,9 +121,11 @@ class Scraper:
         return email_list
 
     def get_email_from_response(self):
-        # Uses the email regex to extract the emails from response and adds the new emails to list if it isn't already
-        # in the list
-
+        """
+        Get emails from the html stored in response using regex and
+         uses add_email to add the email to the email_dict.
+        :return: None
+        """
         # get new emails from response html
         new_emails = list(set(re.findall(r"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+",
                                          self.response, re.I)))
@@ -111,6 +138,11 @@ class Scraper:
                 self.add_email(new_emails)
 
     def get_new_urls_from_html(self):
+        """
+        Get new urls from the <a> tags in html, verify them,
+         and if they're verified add them to new_urls list.
+        :return: None
+        """
         # get new url links from html and add them to the new urls deque()
         soup = BeautifulSoup(self.response, features='html.parser')
 
@@ -119,50 +151,68 @@ class Scraper:
 
             # check if base url is capped
             if self.queue_counter.get(self.get_current_base_url()) >= self.url_cap:
-                print(f'Queue Capped: {self.get_current_base_url()}: {self.queue_counter[self.get_current_base_url()]}')
+                url_base = self.get_current_base_url()
+                url_base_count = self.queue_counter[self.get_current_base_url()]
+                print(f'Queue Capped: {url_base}: {url_base_count}')
                 break
 
             try:
                 if 'href' in anchor.attrs or anchor.attrs['href'].find('mailto') == -1:
-                    self.poss_link = anchor.attrs['href']
+                    link = anchor.attrs['href']
+
+                    # Occasionally anchor.attrs['href'] == None
+                    if len(link) > 1:
+                        self.poss_link = anchor.attrs['href']
             except KeyError:
-                # KeyErrors are typically in this fashion and aren't the links we're looking for.
-                #   KeyError: Anchor: <a class="dnnSearchBoxClearText" title="Clear search text"></a>
-                #   KeyError: Anchor: <a name="1404"></a>
-                #   KeyError: Anchor: <a name="1410"></a>
-                #   KeyError: Anchor: <a name="1412"></a>
+                """The tags that cause KeyErrors are typically in this fashion
+                  KeyError: Anchor: <a name="1412"></a>"""
                 continue
 
             # Resolve relative links # Todo: simplify this relative link code block with urljoin
-            if self.poss_link.startswith('http'):
-                # TODO: Comment
-                pass
-            elif self.poss_link.startswith('/'):
-                # ex. /catalog/books/index.html
-                self.poss_link = self.get_current_base_url() + self.poss_link
-            elif self.poss_link[0] in string.ascii_letters and '/' not in self.poss_link:
-                # TODO: Comment
-                self.poss_link = urljoin(self.current_url, self.poss_link)
-            elif self.poss_link.startswith('..'):
-                # TODO: Comment
-                self.poss_link = find_abs_path(self.current_url, self.poss_link)  # FIXME: Not working on some links
-                # self.poss_link = urljoin(self.current_url, self.poss_link)  # TESTING!!!
-                # TODO: Use urllib.parse.join instead
-                #       https://www.reddit.com/r/learnpython/comments/cupusi/web_crawling_resolving_relative_links_question/exx45tg?utm_source=share&utm_medium=web2x
-            elif self.poss_link[0] in string.ascii_letters and '/' in self.poss_link:
-                # TODO: Comment
-                new_url_list = self.current_url.split('/')
-                trailing_html = new_url_list[-1]
-                if trailing_html.endswith('.html'):
-                    del new_url_list[-1]
-                new_url_list.append(self.poss_link)
-                self.poss_link = '/'.join(new_url_list)
+            try:
+                if self.poss_link.startswith('http'):
+                    # TODO: Comment
+                    pass
+                elif self.poss_link.startswith('/'):
+                    # ex. /catalog/books/index.html
+                    self.poss_link = self.get_current_base_url() + self.poss_link
+                elif self.poss_link[0] in string.ascii_letters and '/' not in self.poss_link:
+                    # TODO: Comment
+                    self.poss_link = urljoin(self.current_url, self.poss_link)
+                elif self.poss_link.startswith('..'):
+                    # TODO: Comment
+                    self.poss_link = find_abs_path(self.current_url, self.poss_link)
+                    # self.poss_link = urljoin(self.current_url, self.poss_link)
+                    # TODO: Use urllib.parse.join instead
+                    #       https://www.reddit.com/r/learnpython/comments/cupusi/web_crawling_resolving_relative_links_question/exx45tg?utm_source=share&utm_medium=web2x
+                elif self.poss_link[0] in string.ascii_letters and '/' in self.poss_link:
+                    # TODO: Comment
+                    new_url_list = self.current_url.split('/')
+                    trailing_html = new_url_list[-1]
+                    if trailing_html.endswith('.html'):
+                        del new_url_list[-1]
+                    new_url_list.append(self.poss_link)
+                    self.poss_link = '/'.join(new_url_list)
+            except IndexError as e:
+                # Todo: test why this error was thrown
+                '''Traceback (most recent call last):
+                  File "test_main.py", line 13, in <module>
+                    url.scrape()
+                  File "scraper_class.py", line 285, in scrape
+                    self.get_new_urls_from_html()
+                  File "scraper_class.py", line 143, in get_new_urls_from_html
+                    elif self.poss_link[0] in string.ascii_letters and '/' not in self.poss_link:
+                IndexError: string index out of range
+                '''
+                print(f'Error: {e}', file=sys.stderr)
+                print(f'poss link: {self.poss_link}', file=sys.stderr)
+                print(f'Anchor: {anchor}', file=sys.stderr)
+                sys.exit()
 
             # Add the url to the new_urls and print out that a link was added
             if self.is_poss_link_a_link():
 
                 # Create an entry in the debug dictionary
-                # TODO: Test me!
                 self.debug_dict.setdefault(self.current_url, [self.poss_link])
                 if self.poss_link not in self.debug_dict[self.current_url]:
                     self.debug_dict[self.current_url].append(self.poss_link)
@@ -172,6 +222,10 @@ class Scraper:
                 self.add_queue_counter()
 
     def get_total_urls_scraped(self):
+        """
+        Get the total urls scraped.
+        :return: the number of urls scraped.
+        """
         # get the total amount of links scraped
         count = 0
         for i in self.url_counter.values():
@@ -188,13 +242,20 @@ class Scraper:
             return print(f'new_urls set to {self.new_urls}')
 
     def set_current_url(self):
-        # get the url from new_urls, move url to processed_urls, return url
+        """
+        Set current_url to the first object from new_urls
+        and then add that url to the processed_urls list.
+        :return: None
+        """
         url = self.new_urls.popleft()
         self.processed_urls.append(url)
-        # print(f'{url} added to Processed URLS:{self.processed_urls}')
         self.current_url = url
 
     def set_response_with_html(self):
+        """
+        Set response with the html from the current_url.
+        :return: None
+        """
         # Get current url and set response to the HTML received
         url = self.get_current_url()
         try:
@@ -216,7 +277,12 @@ class Scraper:
             print(f'Link Error: {e}')
 
     def add_email(self, new_email_list):
-        # If email in list isn't in email dict, add it, else, remove it from email list
+        """
+        Add emails found to email_dict.
+        :param new_email_list: List of newly found emails.
+        :return: None
+        """
+        # If email in the list isn't in the email dict, add it, else, remove it from email list
         emails_frm_email_dict = self.email_dict[self.get_current_base_url()]
         for email in new_email_list:
             if email in emails_frm_email_dict:
@@ -224,25 +290,43 @@ class Scraper:
             emails_frm_email_dict.append(email)
 
     def add_to_new_urls(self, url):
+        """
+        Add a new url to new_urls.
+        :param url: The new url
+        :return: None
+        """
         # Add another url to new_urls
         self.new_urls.append(url)
 
     def add_url_counter(self):
+        """
+        Increment the base_url in url_counter by 1
+        :return: None
+        """
         # increment the url counter in url_counter by 1
         self.url_counter[self.get_current_base_url()] += 1
 
     def add_queue_counter(self):
-        # increment url base in queue counter by one
+        """
+        Increment the url_base in queue_counter by one.
+        :return: None
+        """
         self.queue_counter[self.get_current_base_url()] += 1
 
     def is_url_capped(self):
-        # Return True if the url is capped, False if it isn't
+        """
+        Check if the url is capped at the currently set url_cap.
+        :return: True if the url is capped, False if it isn't
+        """
         if self.url_counter.get(self.get_current_base_url()) >= self.url_cap:
             return True
         return False
 
     def is_poss_link_a_link(self):
-        # check link for criteria
+        """
+        Check if self.poss_link is a valid relative link.
+        :return: True if the relative link is value; False if the relative link isn't.
+        """
         exclude_ext = ['image', 'pdf', 'jpg', 'png', 'gif', 'xlsx', 'spx',
                        'mp3', 'csv', 'wma', 'provider', 'specialtie', 'pptx',
                        'asp', 'mp4', 'download', 'javascript', 'tel:', 'pdf',
@@ -256,34 +340,40 @@ class Scraper:
         if self.poss_link in self.processed_urls:
             # link is already in the processed urls
             return False
-        elif self.poss_link in self.new_urls:
+        if self.poss_link in self.new_urls:
             # link is already in new urls
             return False
-        elif self.poss_link.startswith('mailto:'):
+        if self.poss_link.startswith('mailto:'):
             # link is a mailto: link, extract email from mailto:, and add it to the email list if not already in there
             email_from_link = self.poss_link[7:]
             self.add_email([email_from_link])
             return False
-        elif self.get_current_base_url() not in self.poss_link:
+        if self.get_current_base_url() not in self.poss_link:
             # Base url is not in the link, ex. 'http://instagram.com/company_profile
-            # print(f'Link: {self.poss_link} doesnt have url base {self.get_current_base_url()}')
             return False
-        elif 'mailto:' in self.poss_link:  # TODO: TEST THIS AND MAKE SURE IT DOESN'T AVOID LINKS IT SHOULDN'T
+        if 'mailto:' in self.poss_link:
             return False
-        else:
-            return True
+        return True
 
     def scrape(self):
+        """
+        Scrape the link(s) that the user enters and print the results to the screen.
+        :return: None
+        """
         try:
             while len(self.new_urls):
+                print('Scraping...')
+                print(f'Urls scraped: [{self.get_total_urls_scraped()}/{len(self.new_urls)}]')
                 self.set_current_url()
                 print(f'Processing: {self.current_url}', file=sys.stderr)
                 self.set_response_with_html()
                 if self.response:
                     self.get_email_from_response()
                     self.get_new_urls_from_html()
-                    print('Zzz...')
                     time.sleep(self.sleep_time)
+                self.print_emails()
+                self.print_buggy_links()
+                self.clear()
             self.print_emails()
             self.print_buggy_links()
         except KeyboardInterrupt:
@@ -292,7 +382,10 @@ class Scraper:
 
     @classmethod
     def print_buggy_links(cls):
-        # print buggy links
+        """
+        Print out the buggy links and the urls from which they came from. This is for debugging purposes.
+        :return:
+        """
         if cls.buggy_url_list:
             print('Buggy Links:')
             for url, links in cls.debug_dict.items():
@@ -309,7 +402,10 @@ class Scraper:
 
     @classmethod
     def print_emails(cls):
-        # Print out all of the emails for each entry in the email dictionary
+        """
+        Print out all emails found for each link.
+        :return:
+        """
         if cls.email_dict:
             for link, email_list in cls.email_dict.items():
                 if email_list:
@@ -317,10 +413,17 @@ class Scraper:
                     for email in email_list:
                         print(f'\t\t{email}')
         else:
-            print(f'No Emails Found: {link}')
+            print('No Emails Found!')
+
+    @staticmethod
+    def clear():
+        """
+        Clears the screen of the terminal.
+        :return: None
+        """
+        os.system('clear')
 
     # TODO: Look into creating different regex for different information that can be scraped from a page
     # TODO: Make a class method that writes the emails to a json dictionary
     # TODO: Write a method that will email the results
     # TODO: Write a method that will print out the stats
-
