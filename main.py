@@ -44,7 +44,6 @@ def main():
 
         # extract url to resolve relative link
         parts = urlsplit(url)
-        print(parts)
         if parts.scheme != 'mailto' and parts.scheme != '#': # this code block may unnecessary
             # if '/' in parts.path:
             #     path = url[:url.rfind('/') + 1]
@@ -78,15 +77,6 @@ def main():
             # ignore pages with errors/timeout
             print(f'ERROR {e}: Link Skipped!')
             continue
-
-        # FIXME: Formulate a regex that will find 404 errors
-        #   print out if page throws a 404 error
-        # four_oh_four_re = re.compile(r'404')
-        # four_oh_four_mo = four_oh_four_re.findall(response)
-        # if four_oh_four_mo:
-        #     print(f'ERROR: 404!', file=sys.stderr)
-        #     print(response, file=sys.stderr)
-        #     continue
 
         # extract all email addresses from response.text and append them to new_emails
         new_emails = list(set(re.findall(r"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+", response, re.I)))
@@ -140,6 +130,7 @@ def main():
             # resolve relative links
             if link.startswith('/'):
                 link = path + link # testing this line
+                print(f'Link is a relative link: {link}')
                 # link = url_base + link
 
             # check link for criteria
@@ -186,7 +177,8 @@ def main():
 
         # print out how many urls are left to scan
         print(len(new_urls), 'to scan')
-        time.sleep(5)
+        # time.sleep(5)
+    print(f'Urls Scraped: {len(processed_urls)}')
 
 
 if __name__ == '__main__':
