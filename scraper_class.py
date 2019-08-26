@@ -360,6 +360,7 @@ class Scraper:
         Scrape the link(s) that the user enters and print the results to the screen.
         :return: None
         """
+        self.clear()
         try:
             while len(self.new_urls):
                 print('Scraping...')
@@ -374,6 +375,7 @@ class Scraper:
                     time.sleep(self.sleep_time)
                 self.print_emails()
                 self.print_buggy_links()
+                time.sleep(self.sleep_time)
                 self.clear()
             self.print_emails()
             self.print_buggy_links()
