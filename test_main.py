@@ -1,8 +1,14 @@
 from scraper_class import Scraper
 
-# url = Scraper('http://books.toscrape.com/')
-input_url = input('What website would you like to scrape?\n: ').rstrip()
+print('Welcome to Scraper!')
+from_string_or_list = input('Would you like to scrape a list of urls or one url? [l\\s]\n: ').lower()
+if from_string_or_list == 'l':
+    url_list = input('Enter your urls separated with a comma\n: ')
+    input_url = url_list.split(',')
+    input_url = [i.rstrip().lstrip() for i in input_url]
+else:
+    input_url = input('Enter your url\n: ')
 url = Scraper(input_url)
-url.sleep_time = 0
+url.sleep_time = 2
 url.scrape()
 print(f'Urls Scraped: {url.get_total_urls_scraped()}')
