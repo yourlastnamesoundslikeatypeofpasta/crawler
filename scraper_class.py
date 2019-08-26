@@ -1,14 +1,16 @@
 """A class version of main.py"""
 import re
 import sys
+import string
 import time
 from collections import deque
-from urllib.parse import urlsplit
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
 
 from base_url import base_url
+from find_abs_path import find_abs_path
 
 
 class Scraper:
@@ -24,17 +26,27 @@ class Scraper:
     # List of urls that have been processed
     processed_urls = []
 
-    # Max number of links to add to the new_urls list
+    # Default max number of links to add to the new_urls list
     url_cap = 1500
+
+    # Default sleep time (in seconds) between each scrape
+    sleep_time = 10
 
     def __init__(self, url):
         # Check if url is a string and over-write it as a list if it is
         if type(url) == str:
             url = [url]
 
+        # Create a deque from the url list
         self.new_urls = deque(url)
+
+        # Where HTML text is stored for the current url
         self.response = None
+
+        # The current url being processed
         self.current_url = None
+
+        # A possible link that may have been found from the HTML
         self.poss_link = None
 
         # Create a default dictionary entry for each website in email_dict, url_counter, queue_counter
@@ -56,35 +68,8 @@ class Scraper:
         # get the next url in deque
         return self.new_urls[-1]
 
-    def set_new_urls(self, url_list):
-        # update new_urls with a list of new urls
-        if type(url_list) == list:
-            self.new_urls = deque(url_list)
-            return print(f'new_urls set to {self.new_urls}')
-        if type(url_list) == str:
-            self.new_urls = deque([url_list])
-            return print(f'new_urls set to {self.new_urls}')
-
-    def set_current_url(self):
-        # get the url from new_urls, move url to processed_urls, return url
-        url = self.new_urls.popleft()
-        self.processed_urls.append(url)
-        # print(f'{url} added to Processed URLS:{self.processed_urls}')
-        self.current_url = url
-
-    def set_response_with_html(self):
-        # Get current url and set response to the HTML received
-        url = self.get_current_url()
-        try:
-            response = requests.get(url, timeout=10).text
-            self.response = response
-            self.add_url_counter()
-        except (requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema,
-                requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
-                requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
-            print(f'Link Error: {e}')
-
     def get_email_with_html_parser(self):
+        # TODO: Look into turning this into a static method
         # For some reason using beautiful soup automatically converts unicode chars into letters
         # So using beautiful soup and looping through each tag and checking if the tag contains an email that has
         # been decoded with beautiful soup is the best option, make this comment prettier in the future please
@@ -92,7 +77,6 @@ class Scraper:
         email_list = []
 
         for anchor in soup.find_all('a'):
-            print(anchor)
             new_emails = re.findall(r"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+",
                                     str(anchor), re.I)
             if new_emails:
@@ -119,6 +103,92 @@ class Scraper:
             new_emails = self.get_email_with_html_parser()
             if new_emails:
                 self.add_email(new_emails)
+
+    # TODO: Look into creating different regex for different information that can be scraped from a page
+
+    def get_new_urls_from_html(self):
+        # get new url links from html and add them to the new urls deque()
+        soup = BeautifulSoup(self.response, features='html.parser')
+
+        # Go through every link in html and add it to list
+        for anchor in soup.find_all('a'):
+
+            # check if base url is capped
+            if self.queue_counter.get(self.get_current_base_url()) >= self.url_cap:
+                print(f'Queue Capped: {self.get_current_base_url()}: {self.queue_counter[self.get_current_base_url()]}')
+                break
+
+            try:
+                if 'href' in anchor.attrs or anchor.attrs['href'].find('mailto') == -1:
+                    self.poss_link = anchor.attrs['href']
+            except KeyError:
+                # KeyErrors are typically in this fashion and aren't the links we're looking for.
+                #   KeyError: Anchor: <a class="dnnSearchBoxClearText" title="Clear search text"></a>
+                #   KeyError: Anchor: <a name="1404"></a>
+                #   KeyError: Anchor: <a name="1410"></a>
+                #   KeyError: Anchor: <a name="1412"></a>
+                continue
+
+            # Resolve relative links
+            if self.poss_link.startswith('http'):
+                # TODO: Comment
+                pass
+            elif self.poss_link.startswith('/'):
+                # ex. /catalog/books/index.html
+                self.poss_link = self.get_current_base_url() + self.poss_link
+            elif self.poss_link[0] in string.ascii_letters and '/' not in self.poss_link:
+                # TODO: Comment
+                new_url_list = self.current_url.split('/')
+                del new_url_list[-1]
+                new_url_list.append(self.poss_link)
+                self.poss_link = '/'.join(new_url_list)
+            elif self.poss_link.startswith('..'):
+                # TODO: Comment
+                self.poss_link = find_abs_path(self.current_url, self.poss_link)
+                # self.poss_link = urljoin(self.current_url, self.poss_link)  # TESTING!!!
+                # TODO: Use urllib.parse.join instead
+                #       https://www.reddit.com/r/learnpython/comments/cupusi/web_crawling_resolving_relative_links_question/exx45tg?utm_source=share&utm_medium=web2x
+            elif self.poss_link[0] in string.ascii_letters and '/' in self.poss_link:
+                # TODO: Comment
+                self.poss_link = self.get_current_base_url() + self.poss_link
+
+            # check link criteria, .is_link, placeholder
+            if self.is_poss_link_a_link():
+                self.add_to_new_urls(self.poss_link)
+                print(f'New URL Added: {self.poss_link}')
+                self.add_queue_counter()
+
+    def set_new_urls(self, url_list):
+        # update new_urls with a list of new urls
+        if type(url_list) == list:
+            self.new_urls = deque(url_list)
+            return print(f'new_urls set to {self.new_urls}')
+        if type(url_list) == str:
+            self.new_urls = deque([url_list])
+            return print(f'new_urls set to {self.new_urls}')
+
+    def set_current_url(self):
+        # get the url from new_urls, move url to processed_urls, return url
+        url = self.new_urls.popleft()
+        self.processed_urls.append(url)
+        # print(f'{url} added to Processed URLS:{self.processed_urls}')
+        self.current_url = url
+
+    def set_response_with_html(self):
+        # Get current url and set response to the HTML received
+        url = self.get_current_url()
+        try:
+            # TODO: Look into adding headers and proxies. Maybe a method to turn proxies on or off, default off
+            response = requests.get(url, timeout=10)
+            status_code = response.status_code
+            if status_code != 200:
+                print(f'Status Code Error: {self.current_url}: {status_code}', file=sys.stderr)
+            self.response = response.text
+            self.add_url_counter()
+        except (requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema,
+                requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
+                requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
+            print(f'Link Error: {e}')
 
     def add_email(self, new_email_list):
         # If email in list isn't in email dict, add it, else, remove it from email list
@@ -173,45 +243,34 @@ class Scraper:
             # Base url is not in the link, ex. 'http://instagram.com/company_profile
             # print(f'Link: {self.poss_link} doesnt have url base {self.get_current_base_url()}')
             return False
+        elif 'mailto:' in self.poss_link:  # TODO: TEST THIS AND MAKE SURE IT DOESN'T AVOID LINKS IT SHOULDN'T
+            return False
         else:
             return True
 
-    def get_new_urls_from_html(self):
-        # get new url links from html and add them to the new urls deque()
-        soup = BeautifulSoup(self.response, features='html.parser')
-
-        # Go through every link in html and add it to list
-        for anchor in soup.find_all('a'):
-
-            # check if base url is capped
-            if self.queue_counter.get(self.get_current_base_url()) >= self.url_cap:
-                print(f'Queue Capped: {self.get_current_base_url()}: {self.queue_counter[self.get_current_base_url()]}')
-                break
-
-            try:
-                if 'href' in anchor.attrs or anchor.attrs['href'].find('mailto') == -1:
-                    self.poss_link = anchor.attrs['href']
-                else:
-                    print(f'LINE 161: Link: {anchor} didnt have href, WARNING', file=sys.stderr)
-                    print(self.poss_link, file=sys.stderr)
-            except KeyError:
-                print(f'KeyError: Anchor: {anchor}, Link: {self.get_current_url()}', file=sys.stderr)
-                continue
-
-            # resolve relative links method placeholder
-            if self.poss_link.startswith('/'):
-                self.poss_link = self.get_current_base_url() + self.poss_link
-
-            # check link criteria, .is_link, placeholder
-            if self.is_poss_link_a_link():
-                self.add_to_new_urls(self.poss_link)
-                print(f'New URL Added: {self.poss_link}')
-                self.add_queue_counter()
+    def scrape(self):
+        try:
+            while len(self.new_urls):
+                self.set_current_url()
+                print(f'Processing: {self.current_url}', file=sys.stderr)
+                self.set_response_with_html()
+                self.get_email_from_response()
+                self.get_new_urls_from_html()
+                print(f'Sleeping: {self.sleep_time} seconds')
+                time.sleep(self.sleep_time)
+            self.print_emails()
+        except KeyboardInterrupt:
+            self.print_emails()
 
     @classmethod
     def print_emails(cls):
         # Print out all of the emails for each entry in the email dictionary
         for link, email_list in cls.email_dict.items():
-            print(f'Emails Found: {link}')
-            for email in email_list:
-                print(f'\t\t{email}')
+            if email_list:
+                print(f'Emails Found: {link}')
+                for email in email_list:
+                    print(f'\t\t{email}')
+            else:
+                print(f'No Emails Found: {link}')
+
+    # TODO: Make a class method that writes the emails to a json dictionary
