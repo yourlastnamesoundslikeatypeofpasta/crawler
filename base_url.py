@@ -26,6 +26,12 @@ def base_url(url):
     while len(url_base) > 3:
         for ex in ext_lst:
             if url_base.endswith(ex):
+                # Add a trailing foreword slash if the the link doesn't have one
+                if url_base.endswith('/') is False:
+                    url_base = url_base + '/'
                 return url_base
-        print(f'URL Extension: {url_base[:-3]} is not in extension list.')
+        print(f'URL Extension: {url_base[-4:]} is not in extension list.')
+        # Add a trailing foreword slash if the the link doesn't have one
+        if url_base.endswith('/') is False:
+            url_base = url_base + '/'
         return url_base
