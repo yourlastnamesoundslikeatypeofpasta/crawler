@@ -32,6 +32,12 @@ class Scraper:
     # Default sleep time (in seconds) between each scrape
     sleep_time = 10
 
+    # A debugging dictionary, {link_origin: [new_link, new_link_1, new_link_3]}
+    debug_dict = {}
+
+    # Buggy url list
+    buggy_url_list = []
+
     def __init__(self, url):
         # Check if url is a string and over-write it as a list if it is
         if type(url) == str:
@@ -104,8 +110,6 @@ class Scraper:
             if new_emails:
                 self.add_email(new_emails)
 
-    # TODO: Look into creating different regex for different information that can be scraped from a page
-
     def get_new_urls_from_html(self):
         # get new url links from html and add them to the new urls deque()
         soup = BeautifulSoup(self.response, features='html.parser')
@@ -129,7 +133,7 @@ class Scraper:
                 #   KeyError: Anchor: <a name="1412"></a>
                 continue
 
-            # Resolve relative links
+            # Resolve relative links # Todo: simplify this relative link code block with urljoin
             if self.poss_link.startswith('http'):
                 # TODO: Comment
                 pass
@@ -138,10 +142,7 @@ class Scraper:
                 self.poss_link = self.get_current_base_url() + self.poss_link
             elif self.poss_link[0] in string.ascii_letters and '/' not in self.poss_link:
                 # TODO: Comment
-                new_url_list = self.current_url.split('/')
-                del new_url_list[-1]
-                new_url_list.append(self.poss_link)
-                self.poss_link = '/'.join(new_url_list)
+                self.poss_link = urljoin(self.current_url, self.poss_link)
             elif self.poss_link.startswith('..'):
                 # TODO: Comment
                 self.poss_link = find_abs_path(self.current_url, self.poss_link)  # FIXME: Not working on some links
@@ -150,13 +151,33 @@ class Scraper:
                 #       https://www.reddit.com/r/learnpython/comments/cupusi/web_crawling_resolving_relative_links_question/exx45tg?utm_source=share&utm_medium=web2x
             elif self.poss_link[0] in string.ascii_letters and '/' in self.poss_link:
                 # TODO: Comment
-                self.poss_link = self.get_current_base_url() + self.poss_link
+                # self.poss_link = self.get_current_base_url() + self.poss_link
+                new_url_list = self.current_url.split('/')  # todo: testing!
+                trailing_html = new_url_list[-1]
+                if trailing_html.endswith('.html'):
+                    del new_url_list[-1]
+                new_url_list.append(self.poss_link)
+                self.poss_link = '/'.join(new_url_list)
 
-            # check link criteria, .is_link, placeholder
+            # Add the url to the new_urls and print out that a link was added
             if self.is_poss_link_a_link():
+
+                # Create an entry in the debug dictionary
+                # TODO: Test me!
+                self.debug_dict.setdefault(self.current_url, [self.poss_link])
+                if self.poss_link not in self.debug_dict[self.current_url]:
+                    self.debug_dict[self.current_url].append(self.poss_link)
+
                 self.add_to_new_urls(self.poss_link)
                 print(f'New URL Added: {self.poss_link}')
                 self.add_queue_counter()
+
+    def get_total_urls_scraped(self):
+        # get the total amount of links scraped
+        count = 0
+        for i in self.url_counter.values():
+            count += i
+        return count
 
     def set_new_urls(self, url_list):
         # update new_urls with a list of new urls
@@ -181,10 +202,15 @@ class Scraper:
             # TODO: Look into adding headers and proxies. Maybe a method to turn proxies on or off, default off
             response = requests.get(url, timeout=10)
             status_code = response.status_code
+
             if status_code != 200:
+                # Add the current url and new link to the the debug dictionary and print out the status code
                 print(f'Status Code Error: {self.current_url}: {status_code}', file=sys.stderr)
-            self.response = response.text
-            self.add_url_counter()
+                self.buggy_url_list.append(self.current_url)
+                self.response = None
+            else:
+                self.response = response.text
+                self.add_url_counter()
         except (requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema,
                 requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                 requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
@@ -254,13 +280,32 @@ class Scraper:
                 self.set_current_url()
                 print(f'Processing: {self.current_url}', file=sys.stderr)
                 self.set_response_with_html()
-                self.get_email_from_response()
-                self.get_new_urls_from_html()
-                print(f'Sleeping: {self.sleep_time} seconds')
-                time.sleep(self.sleep_time)
+                if self.response:
+                    self.get_email_from_response()
+                    self.get_new_urls_from_html()
+                    time.sleep(self.sleep_time)
             self.print_emails()
+            self.print_buggy_links()
         except KeyboardInterrupt:
             self.print_emails()
+            self.print_buggy_links()
+
+    @classmethod
+    def print_buggy_links(cls):
+        # print buggy links
+        if cls.buggy_url_list:
+            print('Buggy Links:')
+            for url, links in cls.debug_dict.items():
+                buggy_link_list = []
+                for link in links:
+                    if link in cls.buggy_url_list:
+                        buggy_link_list.append(link)
+                if buggy_link_list:
+                    print(f'\tUrl: {url}')
+                    for link in buggy_link_list:
+                        print(f'\t\tLink: {link}')
+        else:
+            print('No buggy links found!')
 
     @classmethod
     def print_emails(cls):
@@ -273,5 +318,6 @@ class Scraper:
             else:
                 print(f'No Emails Found: {link}')
 
+    # TODO: Look into creating different regex for different information that can be scraped from a page
     # TODO: Make a class method that writes the emails to a json dictionary
 
