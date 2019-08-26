@@ -363,7 +363,8 @@ class Scraper:
         try:
             while len(self.new_urls):
                 print('Scraping...')
-                print(f'Urls scraped: [{self.get_total_urls_scraped()}/{len(self.new_urls)}]')
+                print(f'Urls scraped: {self.get_total_urls_scraped()}')
+                print(f'Urls to scrape: {len(self.new_urls)}')
                 self.set_current_url()
                 print(f'Processing: {self.current_url}', file=sys.stderr)
                 self.set_response_with_html()
