@@ -144,7 +144,7 @@ class Scraper:
                 self.poss_link = '/'.join(new_url_list)
             elif self.poss_link.startswith('..'):
                 # TODO: Comment
-                self.poss_link = find_abs_path(self.current_url, self.poss_link)
+                self.poss_link = find_abs_path(self.current_url, self.poss_link)  # FIXME: Not working on some links
                 # self.poss_link = urljoin(self.current_url, self.poss_link)  # TESTING!!!
                 # TODO: Use urllib.parse.join instead
                 #       https://www.reddit.com/r/learnpython/comments/cupusi/web_crawling_resolving_relative_links_question/exx45tg?utm_source=share&utm_medium=web2x
@@ -274,3 +274,4 @@ class Scraper:
                 print(f'No Emails Found: {link}')
 
     # TODO: Make a class method that writes the emails to a json dictionary
+
