@@ -151,8 +151,7 @@ class Scraper:
                 #       https://www.reddit.com/r/learnpython/comments/cupusi/web_crawling_resolving_relative_links_question/exx45tg?utm_source=share&utm_medium=web2x
             elif self.poss_link[0] in string.ascii_letters and '/' in self.poss_link:
                 # TODO: Comment
-                # self.poss_link = self.get_current_base_url() + self.poss_link
-                new_url_list = self.current_url.split('/')  # todo: testing!
+                new_url_list = self.current_url.split('/')
                 trailing_html = new_url_list[-1]
                 if trailing_html.endswith('.html'):
                     del new_url_list[-1]
@@ -322,4 +321,6 @@ class Scraper:
 
     # TODO: Look into creating different regex for different information that can be scraped from a page
     # TODO: Make a class method that writes the emails to a json dictionary
+    # TODO: Write a method that will email the results
+    # TODO: Write a method that will print out the stats
 
