@@ -41,7 +41,7 @@ class Scraper:
     def __init__(self, url):
         # Check if url is a string and over-write it as a list if it is
         if type(url) == str:
-            url = [url]
+            url = [url.rstrip()]
 
         # Create a deque from the url list
         self.new_urls = deque(url)
@@ -283,6 +283,7 @@ class Scraper:
                 if self.response:
                     self.get_email_from_response()
                     self.get_new_urls_from_html()
+                    print('Zzz...')
                     time.sleep(self.sleep_time)
             self.print_emails()
             self.print_buggy_links()
@@ -310,13 +311,14 @@ class Scraper:
     @classmethod
     def print_emails(cls):
         # Print out all of the emails for each entry in the email dictionary
-        for link, email_list in cls.email_dict.items():
-            if email_list:
-                print(f'Emails Found: {link}')
-                for email in email_list:
-                    print(f'\t\t{email}')
-            else:
-                print(f'No Emails Found: {link}')
+        if cls.email_dict:
+            for link, email_list in cls.email_dict.items():
+                if email_list:
+                    print(f'Emails Found: {link}')
+                    for email in email_list:
+                        print(f'\t\t{email}')
+        else:
+            print(f'No Emails Found: {link}')
 
     # TODO: Look into creating different regex for different information that can be scraped from a page
     # TODO: Make a class method that writes the emails to a json dictionary
