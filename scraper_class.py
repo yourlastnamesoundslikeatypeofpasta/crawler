@@ -381,8 +381,10 @@ class Scraper:
                                                title='Save results to...')
             return txt_path
 
-        # Write email results to results.txt
+        # Get file path with a dialog window
         file_path = get_file_path()
+
+        # Write email results to results.txt
         with open(file_path + '/results.txt', 'w') as results:
             if cls.email_dict:
                 for link, email_list in cls.email_dict.items():
