@@ -62,34 +62,12 @@ class Scraper:
             self.url_counter.setdefault(base_url(link), 0)
             self.queue_counter.setdefault(base_url(link), 0)
 
-    def get_new_urls(self):
-        """
-        Get the new_urls list.
-        :return: new_url list.
-        """
-        return self.new_urls
-
-    def get_current_url(self):
-        """
-        Get the current url.
-        :return: The current url.
-        """
-        return self.current_url
-
     def get_current_base_url(self):
         """
         Get the current base url.
         :return: Base url.
         """
-        return base_url(self.get_current_url())
-
-    def get_next_url(self):
-        """
-        Get the next url in new_urls.
-        :return: Get the next url.
-        """
-        # get the next url in deque
-        return self.new_urls[-1]
+        return base_url(self.current_url)
 
     def get_email_with_html_parser(self):
         """
@@ -257,7 +235,7 @@ class Scraper:
         :return: None
         """
         # Get current url and set response to the HTML received
-        url = self.get_current_url()
+        url = self.current_url
         try:
             # TODO: Look into adding headers and proxies. Maybe a method to turn proxies on or off, default off
             response = requests.get(url, timeout=10)
@@ -363,9 +341,12 @@ class Scraper:
         self.clear()
         try:
             while len(self.new_urls):
-                print('Scraping...')
+                status = 'scraping'
+                print(f'Status - {status}')
                 print(f'Urls scraped: {self.get_total_urls_scraped()}')
                 print(f'Urls to scrape: {len(self.new_urls)}')
+                self.print_emails()
+                self.print_buggy_links()
                 self.set_current_url()
                 print(f'Processing: {self.current_url}', file=sys.stderr)
                 self.set_response_with_html()
@@ -373,10 +354,10 @@ class Scraper:
                     self.get_email_from_response()
                     self.get_new_urls_from_html()
                     time.sleep(self.sleep_time)
-                self.print_emails()
-                self.print_buggy_links()
-                time.sleep(self.sleep_time)
                 self.clear()
+            status = 'scraping complete'
+            print(f'Status - {status}')
+            print(f'Urls scraped: {self.get_total_urls_scraped()}')
             self.print_emails()
             self.print_buggy_links()
         except KeyboardInterrupt:
@@ -410,9 +391,10 @@ class Scraper:
         :return:
         """
         if cls.email_dict:
+            print('Emails Found:')
             for link, email_list in cls.email_dict.items():
                 if email_list:
-                    print(f'Emails Found: {link}')
+                    print(f'\tUrl: {link}')
                     for email in email_list:
                         print(f'\t\t{email}')
         else:
