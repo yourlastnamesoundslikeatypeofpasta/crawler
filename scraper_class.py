@@ -4,8 +4,10 @@ import os
 import sys
 import string
 import time
+import tkinter
 from collections import deque
 from urllib.parse import urljoin
+from tkinter import filedialog
 
 import requests
 from bs4 import BeautifulSoup
@@ -357,6 +359,45 @@ class Scraper:
             self.print_buggy_links()
 
     @classmethod
+    def write_to_txt(cls):
+        """
+        When crawl is complete, write the contents of email_dict to a text file.
+        :return: None
+        """
+
+        def get_file_path():
+            """
+            Open a file dialog window and ask the user where they would like to
+            save their results
+            :return: a string of the absolute file path
+            """
+            # Set up the tkinter object
+            root = tkinter.Tk()
+            root.withdraw()
+
+            # Bring up the dialog window
+            curr_path = os.getcwd()
+            txt_path = filedialog.askdirectory(parent=root, initialdir=curr_path,
+                                               title='Save results to...')
+            return txt_path
+
+        # Write email results to results.txt
+        file_path = get_file_path()
+        with open(file_path + '/results.txt', 'w') as results:
+            if cls.email_dict:
+                for link, email_list in cls.email_dict.items():
+                    if email_list:
+                        results.write(f'Emails for: {link}\n')
+                        for email in email_list:
+                            if email == email_list[-1]:
+                                results.write(f'{email}\n\n')
+                                break
+                            results.write(f'{email}\n')
+                print('Results saved!')
+            else:
+                print('No Results to save!')
+
+    @classmethod
     def print_buggy_links(cls):
         """
         Print out the buggy links and the urls from which they came from. This is for debugging purposes.
@@ -370,7 +411,7 @@ class Scraper:
                     if link in cls.buggy_url_list:
                         buggy_link_list.append(link)
                 if buggy_link_list:
-                    print(f'\tUrl: {url}')
+                    print(f'\tLink Origin: {url}')
                     for link in buggy_link_list:
                         print(f'\t\tLink: {link}')
         else:
