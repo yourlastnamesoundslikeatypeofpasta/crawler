@@ -15,6 +15,7 @@ from find_abs_path import find_abs_path
 
 
 class Scraper:
+    """A class the crawls and scrapes a given url"""
     # Dictionary that stores emails {'base_url': ['email_0', 'email_1']}
     email_dict = {}
 
@@ -81,7 +82,6 @@ class Scraper:
         the future please
         :return: email_list
         """
-        # TODO: Look into turning this into a static method
         soup = BeautifulSoup(self.response, features='html.parser')
         email_list = []
 
@@ -146,46 +146,34 @@ class Scraper:
                   KeyError: Anchor: <a name="1412"></a>"""
                 continue
 
-            # Resolve relative links # Todo: simplify this relative link code block with urljoin
+            # Todo: simplify this relative link code block with urljoin
+            # Resolve relative links
             try:
-                if self.poss_link.startswith('http'):
-                    # TODO: Comment
-                    pass
-                elif self.poss_link.startswith('/'):
+
+                if self.poss_link.startswith('/'):
                     # ex. /catalog/books/index.html
-                    self.poss_link = self.get_current_base_url() + self.poss_link
+                    # self.poss_link = self.get_current_base_url() + self.poss_link
+                    self.poss_link = urljoin(self.current_url, self.poss_link)
                 elif self.poss_link[0] in string.ascii_letters and '/' not in self.poss_link:
-                    # TODO: Comment
+                    # ex. page-1.html
                     self.poss_link = urljoin(self.current_url, self.poss_link)
                 elif self.poss_link.startswith('..'):
-                    # TODO: Comment
-                    self.poss_link = find_abs_path(self.current_url, self.poss_link)
-                    # self.poss_link = urljoin(self.current_url, self.poss_link)
-                    # TODO: Use urllib.parse.join instead
-                    #       https://www.reddit.com/r/learnpython/comments/cupusi/web_crawling_resolving_relative_links_question/exx45tg?utm_source=share&utm_medium=web2x
+                    # ex. ../../page-1.html
+                    # self.poss_link = find_abs_path(self.current_url, self.poss_link)
+                    self.poss_link = urljoin(self.current_url, self.poss_link)
                 elif self.poss_link[0] in string.ascii_letters and '/' in self.poss_link:
-                    # TODO: Comment
-                    new_url_list = self.current_url.split('/')
-                    trailing_html = new_url_list[-1]
-                    if trailing_html.endswith('.html'):
-                        del new_url_list[-1]
-                    new_url_list.append(self.poss_link)
-                    self.poss_link = '/'.join(new_url_list)
-            except IndexError as e:
-                # Todo: test why this error was thrown
-                '''Traceback (most recent call last):
-                  File "test_main.py", line 13, in <module>
-                    url.scrape()
-                  File "scraper_class.py", line 285, in scrape
-                    self.get_new_urls_from_html()
-                  File "scraper_class.py", line 143, in get_new_urls_from_html
-                    elif self.poss_link[0] in string.ascii_letters and '/' not in self.poss_link:
-                IndexError: string index out of range
-                '''
-                print(f'Error: {e}', file=sys.stderr)
+                    # ex. content/media/index.html
+                    # new_url_list = self.current_url.split('/')
+                    # trailing_html = new_url_list[-1]
+                    # if trailing_html.endswith('.html'):
+                    #     del new_url_list[-1]
+                    # new_url_list.append(self.poss_link)
+                    # self.poss_link = '/'.join(new_url_list)
+                    self.poss_link = urljoin(self.current_url, self.poss_link)
+            except IndexError as err:
+                print(f'Error: {err}', file=sys.stderr)
                 print(f'poss link: {self.poss_link}', file=sys.stderr)
                 print(f'Anchor: {anchor}', file=sys.stderr)
-                sys.exit()
 
             # Add the url to the new_urls and print out that a link was added
             if self.is_poss_link_a_link():
@@ -211,13 +199,17 @@ class Scraper:
         return count
 
     def set_new_urls(self, url_list):
-        # update new_urls with a list of new urls
+        """
+        Update new_urls with a list of new urls.
+        :param url_list: a string or list of new urls to scrape
+        :return: None
+        """
         if type(url_list) == list:
             self.new_urls = deque(url_list)
-            return print(f'new_urls set to {self.new_urls}')
+            print(f'new_urls set to {self.new_urls}')
         if type(url_list) == str:
             self.new_urls = deque([url_list])
-            return print(f'new_urls set to {self.new_urls}')
+            print(f'new_urls set to {self.new_urls}')
 
     def set_current_url(self):
         """
@@ -237,7 +229,8 @@ class Scraper:
         # Get current url and set response to the HTML received
         url = self.current_url
         try:
-            # TODO: Look into adding headers and proxies. Maybe a method to turn proxies on or off, default off
+            # TODO: Look into adding headers and proxies.
+            #  Maybe a method to turn proxies on or off, default off
             response = requests.get(url, timeout=10)
             status_code = response.status_code
 
@@ -338,7 +331,6 @@ class Scraper:
         Scrape the link(s) that the user enters and print the results to the screen.
         :return: None
         """
-        self.clear()
         try:
             while len(self.new_urls):
                 status = 'scraping'
@@ -410,5 +402,4 @@ class Scraper:
 
     # TODO: Look into creating different regex for different information that can be scraped from a page
     # TODO: Make a class method that writes the emails to a json dictionary
-    # TODO: Write a method that will email the results
     # TODO: Write a method that will print out the stats
