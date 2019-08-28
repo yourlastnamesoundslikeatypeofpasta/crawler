@@ -47,6 +47,8 @@ class Scraper:
         if type(url) == str:
             url = [url.rstrip()]
 
+        # todo: create a session_name attribute
+
         # Create a deque from the url list
         self.new_urls = deque(url)
 
@@ -355,7 +357,7 @@ class Scraper:
             # chars not allowed
             illegal_char_list = ['\\', '/', ':', 'NUL', ':', '*', '"', '<', '>', '|']
             while True:
-                ns = input('What would you like to name scrape session?\n:').lower().strip()
+                ns = input('What would you like to name this scrape session?\n:').lower().strip()
 
                 # check if the name session has any illegal character
                 illegal_char = False
@@ -388,9 +390,11 @@ class Scraper:
                     self.get_new_urls_from_html()
                     self.save_progress(name_session)
                     time.sleep(self.sleep_time)
+                self.save_progress(name_session)
                 self.clear()
 
             # scrape complete
+            self.save_progress(name_session)
             print(f'Session - {name_session}')
             status = 'scraping complete'
             print(f'Status - {status}')
@@ -398,9 +402,25 @@ class Scraper:
             self.print_emails()
             self.print_buggy_links()
         except KeyboardInterrupt:
-            self.save_progress(name_session)
             self.print_emails()
             self.print_buggy_links()
+
+    @classmethod
+    def from_save(cls, name_session):
+        with shelve.open(f'./save/{name_session}.db', flag="r") as save:
+            save_dict = save['main']
+            new_urls = save_dict.get('new_urls')
+            cls.response = save_dict.get('response')
+            cls.current_url = save_dict.get('current_url')
+            cls.poss_link = save_dict.get('poss_link')
+            cls.email_dict = save_dict.get('email_dict')
+            cls.url_counter = save_dict.get('url_counter')
+            cls.queue_counter = save_dict.get('queue_counter')
+            cls.url_cap = save_dict.get('url_cap')
+            cls.sleep_time = save_dict.get('sleep_time')
+            cls.debug_dict = save_dict.get('debug_dict')
+            cls.buggy_url_list = save_dict.get('buggy_url_list')
+            return cls(new_urls)
 
     @classmethod
     def write_to_txt(cls):
@@ -490,5 +510,3 @@ class Scraper:
     # TODO: Look into creating different regex for different information that can be scraped from a page
     # TODO: Make a class method that writes the emails to a json dictionary
     # TODO: Write a method that will print out the stats
-    # TODO: Write a method that allows the saving of a scrape as its happening and then if the user quits
-    #  the scrape they can continue from where they left off
