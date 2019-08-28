@@ -3,6 +3,7 @@ import re
 import os
 import sys
 import string
+import shelve
 import time
 import tkinter
 from collections import deque
@@ -13,7 +14,6 @@ import requests
 from bs4 import BeautifulSoup
 
 from base_url import base_url
-from find_abs_path import find_abs_path
 
 
 class Scraper:
@@ -148,10 +148,8 @@ class Scraper:
                   KeyError: Anchor: <a name="1412"></a>"""
                 continue
 
-            # Todo: simplify this relative link code block with urljoin
             # Resolve relative links
             try:
-
                 if self.poss_link.startswith('/'):
                     # ex. /catalog/books/index.html
                     # self.poss_link = self.get_current_base_url() + self.poss_link
@@ -165,12 +163,6 @@ class Scraper:
                     self.poss_link = urljoin(self.current_url, self.poss_link)
                 elif self.poss_link[0] in string.ascii_letters and '/' in self.poss_link:
                     # ex. content/media/index.html
-                    # new_url_list = self.current_url.split('/')
-                    # trailing_html = new_url_list[-1]
-                    # if trailing_html.endswith('.html'):
-                    #     del new_url_list[-1]
-                    # new_url_list.append(self.poss_link)
-                    # self.poss_link = '/'.join(new_url_list)
                     self.poss_link = urljoin(self.current_url, self.poss_link)
             except IndexError as err:
                 print(f'Error: {err}', file=sys.stderr)
@@ -328,13 +320,60 @@ class Scraper:
             return False
         return True
 
+    def save_progress(self, name_session):
+        """
+        Save the variables new_urls, response, current_url, poss_link,email_dict,
+        url_counter, queue_counter, url_cap, sleep_time, debug_dict,
+        and buggy_url_list with shelve.
+        :return: None
+        """
+        with shelve.open(f'./save/{name_session}.db') as save:
+            save['main'] = {
+                'new_urls': self.new_urls,
+                'response': self.response,
+                'current_url': self.current_url,
+                'poss_link': self.poss_link,
+                'email_dict': self.email_dict,
+                'url_counter': self.url_counter,
+                'queue_counter': self.queue_counter,
+                'url_cap': self.url_cap,
+                'sleep_time': self.sleep_time,
+                'debug_dict': self.debug_dict,
+                'buggy_url_list': self.buggy_url_list,
+            }
+
     def scrape(self):
         """
         Scrape the link(s) that the user enters and print the results to the screen.
         :return: None
         """
+        def get_name_session():
+            """
+            Get the name of this scrape session from the user.
+            :return: a string of the name of the session
+            """
+            # chars not allowed
+            illegal_char_list = ['\\', '/', ':', 'NUL', ':', '*', '"', '<', '>', '|']
+            while True:
+                ns = input('What would you like to name scrape session?\n:').lower().strip()
+
+                # check if the name session has any illegal character
+                illegal_char = False
+                for char in ns:
+                    if char in illegal_char_list:
+                        print(f'IllegalCharacter: {char}. Your session name cannot have the following characters:')
+                        print(','.join(illegal_char_list))
+                        illegal_char = True
+                        break
+                if illegal_char:
+                    continue
+                else:
+                    return ns
+
+        name_session = get_name_session()
         try:
             while len(self.new_urls):
+                print(f'Session - {name_session}')
                 status = 'scraping'
                 print(f'Status - {status}')
                 print(f'Urls scraped: {self.get_total_urls_scraped()}')
@@ -347,14 +386,19 @@ class Scraper:
                 if self.response:
                     self.get_email_from_response()
                     self.get_new_urls_from_html()
+                    self.save_progress(name_session)
                     time.sleep(self.sleep_time)
                 self.clear()
+
+            # scrape complete
+            print(f'Session - {name_session}')
             status = 'scraping complete'
             print(f'Status - {status}')
             print(f'Urls scraped: {self.get_total_urls_scraped()}')
             self.print_emails()
             self.print_buggy_links()
         except KeyboardInterrupt:
+            self.save_progress(name_session)
             self.print_emails()
             self.print_buggy_links()
 
@@ -446,3 +490,5 @@ class Scraper:
     # TODO: Look into creating different regex for different information that can be scraped from a page
     # TODO: Make a class method that writes the emails to a json dictionary
     # TODO: Write a method that will print out the stats
+    # TODO: Write a method that allows the saving of a scrape as its happening and then if the user quits
+    #  the scrape they can continue from where they left off
