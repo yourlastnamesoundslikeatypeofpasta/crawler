@@ -85,7 +85,7 @@ class Scraper:
 
     def get_email_with_html_parser(self):
         """
-        If get_email_from_response doesn't work, then go through each <a> tag,
+        If get_result_from_response doesn't work, then go through each <a> tag,
         use regex in each tag, if the tag has an email add it to the email_list.
 
         For some reason using beautiful soup automatically converts
@@ -113,10 +113,10 @@ class Scraper:
                     email_list.append(new_emails.lower())
         return email_list
 
-    def get_email_from_response(self):
+    def get_result_from_response(self):
         """
         Get emails from the html stored in response using regex and
-         uses add_email to add the email to the result_dict.
+         uses add_result to add the email to the result_dict.
         :return: None
         """
         # get new emails from response html
@@ -126,11 +126,11 @@ class Scraper:
                                          self.response, re.I)))
         if new_emails:
             new_emails = [i.lower() for i in new_emails]
-            self.add_email(new_emails)
+            self.add_result(new_emails)
         else:
             new_emails = self.get_email_with_html_parser()
             if new_emails:
-                self.add_email(new_emails)
+                self.add_result(new_emails)
 
     def get_new_urls_from_html(self):
         """
@@ -259,7 +259,7 @@ class Scraper:
                 requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
             print(f'Link Error: {e}')
 
-    def add_email(self, new_email_list):
+    def add_result(self, new_email_list):
         """
         Add emails found to result_dict.
         :param new_email_list: List of newly found emails.
@@ -329,8 +329,8 @@ class Scraper:
             return False
         if self.poss_link.startswith('mailto:'):
             # link is a mailto: link, extract email from mailto:, and add it to the email list if not already in there
-            email_from_link = self.poss_link[7:]
-            self.add_email([email_from_link])
+            result_from_link = self.poss_link[7:]
+            self.add_result([result_from_link])
             return False
         if self.get_current_base_url() not in self.poss_link:
             # Base url is not in the link, ex. 'http://instagram.com/company_profile
@@ -404,7 +404,7 @@ class Scraper:
                 print(f'Processing: {self.current_url}', file=sys.stderr)
                 self.set_response_with_html()
                 if self.response:
-                    self.get_email_from_response()
+                    self.get_result_from_response()
                     self.get_new_urls_from_html()
                     self.save_progress(name_session)
                     time.sleep(self.sleep_time)
