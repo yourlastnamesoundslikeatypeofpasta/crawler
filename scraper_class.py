@@ -18,8 +18,8 @@ from base_url import base_url
 
 class Scraper:
     """A class the crawls and scrapes a given url"""
-    # Dictionary that stores emails {'base_url': ['email_0', 'email_1']}
-    email_dict = {}
+    # Dictionary that stores emails {'base_url': ['email_0', 'phone#']}
+    result_dict = {}
 
     # Dictionary that stores the number of times a base_url has been processed {'base_url': 21}
     url_counter = {}
@@ -42,15 +42,24 @@ class Scraper:
     # Buggy url list
     buggy_url_list = []
 
+    # def __init__(self, url, regex):
     def __init__(self, url):
         # Check if url is a string and over-write it as a list if it is
         if type(url) == str:
-            url = [url.rstrip()]
+            url = [url.strip().lower()]
 
         # todo: create a session_name attribute
 
         # Create a deque from the url list
         self.new_urls = deque(url)
+
+        # # Regex to use
+        # self.regex = regex
+        # regex = regex.lower()
+        # if regex == 'email':
+        #     self.regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
+        # elif regex == 'CAFR':
+        #     self.regex = r"(Comprehensive Annual Financial Report)|(CAFR)"
 
         # Where HTML text is stored for the current url
         self.response = None
@@ -61,9 +70,9 @@ class Scraper:
         # A possible link that may have been found from the HTML
         self.poss_link = None
 
-        # Create a default dictionary entry for each website in email_dict
+        # Create a default dictionary entry for each website in result_dict
         for link in url:
-            self.email_dict.setdefault(base_url(link), [])
+            self.result_dict.setdefault(base_url(link), [])
             self.url_counter.setdefault(base_url(link), 0)
             self.queue_counter.setdefault(base_url(link), 0)
 
@@ -90,7 +99,9 @@ class Scraper:
         email_list = []
 
         for anchor in soup.find_all('a'):
-            new_emails = re.findall(r"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+",
+            # new_emails = re.findall(self.regex,
+            #                         str(anchor), re.I)
+            new_emails = re.findall(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
                                     str(anchor), re.I)
             if new_emails:
                 if len(new_emails) > 2:
@@ -105,11 +116,13 @@ class Scraper:
     def get_email_from_response(self):
         """
         Get emails from the html stored in response using regex and
-         uses add_email to add the email to the email_dict.
+         uses add_email to add the email to the result_dict.
         :return: None
         """
         # get new emails from response html
-        new_emails = list(set(re.findall(r"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+",
+        # new_emails = list(set(re.findall(self.regex,
+        #                                  self.response, re.I)))
+        new_emails = list(set(re.findall(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
                                          self.response, re.I)))
         if new_emails:
             new_emails = [i.lower() for i in new_emails]
@@ -143,8 +156,8 @@ class Scraper:
                     link = anchor.attrs['href']
 
                     # Occasionally anchor.attrs['href'] == None
-                    if len(link) > 1:
-                        self.poss_link = anchor.attrs['href']
+                    if link is not None:
+                        self.poss_link = link
             except KeyError:
                 """The tags that cause KeyErrors are typically in this fashion
                   KeyError: Anchor: <a name="1412"></a>"""
@@ -154,7 +167,6 @@ class Scraper:
             try:
                 if self.poss_link.startswith('/'):
                     # ex. /catalog/books/index.html
-                    # self.poss_link = self.get_current_base_url() + self.poss_link
                     self.poss_link = urljoin(self.current_url, self.poss_link)
                 elif self.poss_link[0] in string.ascii_letters and '/' not in self.poss_link:
                     # ex. page-1.html
@@ -171,6 +183,9 @@ class Scraper:
                 print(f'poss link: {self.poss_link}', file=sys.stderr)
                 print(f'Anchor: {anchor}', file=sys.stderr)
 
+            # lower poss_link to avoid duplicate links with different casing
+            self.poss_link = self.poss_link.lower()
+
             # Add the url to the new_urls and print out that a link was added
             if self.is_poss_link_a_link():
 
@@ -179,6 +194,7 @@ class Scraper:
                 if self.poss_link not in self.debug_dict[self.current_url]:
                     self.debug_dict[self.current_url].append(self.poss_link)
 
+                # add the link to new_urls
                 self.add_to_new_urls(self.poss_link)
                 print(f'New URL Added: {self.poss_link}')
                 self.add_queue_counter()
@@ -245,12 +261,13 @@ class Scraper:
 
     def add_email(self, new_email_list):
         """
-        Add emails found to email_dict.
+        Add emails found to result_dict.
         :param new_email_list: List of newly found emails.
         :return: None
         """
         # If email in the list isn't in the email dict, add it, else, remove it from email list
-        emails_frm_email_dict = self.email_dict[self.get_current_base_url()]
+        emails_frm_email_dict = self.result_dict[self.get_current_base_url()]
+        new_email_list = [i.lower() for i in new_email_list]
         for email in new_email_list:
             if email in emails_frm_email_dict:
                 continue
@@ -294,9 +311,9 @@ class Scraper:
         Check if self.poss_link is a valid relative link.
         :return: True if the relative link is value; False if the relative link isn't.
         """
-        exclude_ext = ['image', 'pdf', 'jpg', 'png', 'gif', 'xlsx', 'spx',
+        exclude_ext = ['image', 'pdf', 'jpg', 'png', 'gif', 'xlsx',
                        'mp3', 'csv', 'wma', 'provider', 'specialtie', 'pptx',
-                       'asp', 'mp4', 'download', 'javascript', 'tel:', 'pdf',
+                       'mp4', 'download', 'javascript', 'tel:', 'pdf', 'ppt',
                        'specialty']
 
         for extension in exclude_ext:
@@ -324,7 +341,7 @@ class Scraper:
 
     def save_progress(self, name_session):
         """
-        Save the variables new_urls, response, current_url, poss_link,email_dict,
+        Save the variables new_urls, response, current_url, poss_link,result_dict,
         url_counter, queue_counter, url_cap, sleep_time, debug_dict,
         and buggy_url_list with shelve.
         :return: None
@@ -335,7 +352,7 @@ class Scraper:
                 'response': self.response,
                 'current_url': self.current_url,
                 'poss_link': self.poss_link,
-                'email_dict': self.email_dict,
+                'result_dict': self.result_dict,
                 'url_counter': self.url_counter,
                 'queue_counter': self.queue_counter,
                 'url_cap': self.url_cap,
@@ -349,6 +366,7 @@ class Scraper:
         Scrape the link(s) that the user enters and print the results to the screen.
         :return: None
         """
+
         def get_name_session():
             """
             Get the name of this scrape session from the user.
@@ -391,6 +409,7 @@ class Scraper:
                     self.save_progress(name_session)
                     time.sleep(self.sleep_time)
                 self.save_progress(name_session)
+                time.sleep(.1)
                 self.clear()
 
             # scrape complete
@@ -405,6 +424,9 @@ class Scraper:
             self.print_emails()
             self.print_buggy_links()
 
+    def key_word_scrape(self):
+        pass
+
     @classmethod
     def from_save(cls, name_session):
         with shelve.open(f'./save/{name_session}.db', flag="r") as save:
@@ -413,7 +435,7 @@ class Scraper:
             cls.response = save_dict.get('response')
             cls.current_url = save_dict.get('current_url')
             cls.poss_link = save_dict.get('poss_link')
-            cls.email_dict = save_dict.get('email_dict')
+            cls.result_dict = save_dict.get('result_dict')
             cls.url_counter = save_dict.get('url_counter')
             cls.queue_counter = save_dict.get('queue_counter')
             cls.url_cap = save_dict.get('url_cap')
@@ -425,7 +447,7 @@ class Scraper:
     @classmethod
     def write_to_txt(cls):
         """
-        When crawl is complete, write the contents of email_dict to a text file.
+        When crawl is complete, write the contents of result_dict to a text file.
         :return: None
         """
 
@@ -450,8 +472,8 @@ class Scraper:
 
         # Write email results to results.txt
         with open(file_path + '/results.txt', 'w') as results:
-            if cls.email_dict:
-                for link, email_list in cls.email_dict.items():
+            if cls.result_dict:
+                for link, email_list in cls.result_dict.items():
                     if email_list:
                         results.write(f'Emails for: {link}\n')
                         for email in email_list:
@@ -489,9 +511,9 @@ class Scraper:
         Print out all emails found for each link.
         :return:
         """
-        if cls.email_dict:
+        if cls.result_dict:
             print('Emails Found:')
-            for link, email_list in cls.email_dict.items():
+            for link, email_list in cls.result_dict.items():
                 if email_list:
                     print(f'\tUrl: {link}')
                     for email in email_list:
