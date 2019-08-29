@@ -18,7 +18,7 @@ from base_url import base_url
 
 class Scraper:
     """A class the crawls and scrapes a given url"""
-    # Dictionary that stores emails {'base_url': ['email_0', 'phone#']}
+    # Dictionary that stores results {'base_url': ['email_0', 'phone#']}
     result_dict = {}
 
     # Dictionary that stores the number of times a base_url has been processed {'base_url': 21}
@@ -83,54 +83,56 @@ class Scraper:
         """
         return base_url(self.current_url)
 
-    def get_email_with_html_parser(self):
+    def get_result_with_html_parser(self):
         """
         If get_result_from_response doesn't work, then go through each <a> tag,
-        use regex in each tag, if the tag has an email add it to the email_list.
+        use regex in each tag, if the tag has a results add it to the result_list.
 
         For some reason using beautiful soup automatically converts
         unicode chars into letters. So using beautiful soup and looping through
-        each tag and checking if the tag contains an email that has been decoded
+        each tag and checking if the tag contains a result that has been decoded
         with beautiful soup is the best option, make this comment prettier in
         the future please
-        :return: email_list
+        :return: result_list
         """
         soup = BeautifulSoup(self.response, features='html.parser')
-        email_list = []
+        result_list = []
 
         for anchor in soup.find_all('a'):
-            # new_emails = re.findall(self.regex,
+            # new_results = re.findall(self.regex,
             #                         str(anchor), re.I)
-            new_emails = re.findall(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
-                                    str(anchor), re.I)
-            if new_emails:
-                if len(new_emails) > 2:
-                    print('More than 1 email found in link. Refer to .get_email_with_html_parser')
-                    print(new_emails)
+            new_results = re.findall(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
+                                     str(anchor), re.I)
+            if new_results:
+                if len(new_results) > 2:
+                    print('More than 1 result found in link. Refer to .get_result_with_html_parser')
+                    print(new_results)
 
-                new_emails = new_emails[0]
-                if new_emails not in email_list:
-                    email_list.append(new_emails.lower())
-        return email_list
+                new_results = new_results[0]
+                if new_results not in result_list:
+                    result_list.append(new_results.lower())
+        return result_list
 
     def get_result_from_response(self):
         """
-        Get emails from the html stored in response using regex and
-         uses add_result to add the email to the result_dict.
+        Get results from the html stored in response using regex and
+        use add_result to add the result to the result_dict or
+        use get_result_with_html_parser and regex to look for
+        a result in the <a> tags
         :return: None
         """
-        # get new emails from response html
-        # new_emails = list(set(re.findall(self.regex,
+        # get new results from response html
+        # new_results_list = list(set(re.findall(self.regex,
         #                                  self.response, re.I)))
-        new_emails = list(set(re.findall(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
-                                         self.response, re.I)))
-        if new_emails:
-            new_emails = [i.lower() for i in new_emails]
-            self.add_result(new_emails)
+        new_results_list = list(set(re.findall(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
+                                               self.response, re.I)))
+        if new_results_list:
+            new_results_list = [i.lower() for i in new_results_list]
+            self.add_result(new_results_list)
         else:
-            new_emails = self.get_email_with_html_parser()
-            if new_emails:
-                self.add_result(new_emails)
+            new_results_list = self.get_result_with_html_parser()
+            if new_results_list:
+                self.add_result(new_results_list)
 
     def get_new_urls_from_html(self):
         """
@@ -259,19 +261,19 @@ class Scraper:
                 requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
             print(f'Link Error: {e}')
 
-    def add_result(self, new_email_list):
+    def add_result(self, new_result_list):
         """
-        Add emails found to result_dict.
-        :param new_email_list: List of newly found emails.
+        Add results found to result_dict.
+        :param new_result_list: List of newly found results.
         :return: None
         """
-        # If email in the list isn't in the email dict, add it, else, remove it from email list
-        emails_frm_email_dict = self.result_dict[self.get_current_base_url()]
-        new_email_list = [i.lower() for i in new_email_list]
-        for email in new_email_list:
-            if email in emails_frm_email_dict:
+        # If result in the list isn't in the result dict, add it, else, remove it from new_result_list
+        result_from_rslt_dict = self.result_dict[self.get_current_base_url()]
+        new_result_list = [i.lower() for i in new_result_list]
+        for result in new_result_list:
+            if result in result_from_rslt_dict:
                 continue
-            emails_frm_email_dict.append(email)
+            result_from_rslt_dict.append(result)
 
     def add_to_new_urls(self, url):
         """
@@ -327,8 +329,8 @@ class Scraper:
         if self.poss_link in self.new_urls:
             # link is already in new urls
             return False
-        if self.poss_link.startswith('mailto:'):
-            # link is a mailto: link, extract email from mailto:, and add it to the email list if not already in there
+        if self.poss_link.startswith('mailto:'):  # todo: possibly delete this
+            # link is a mailto: link, extract email from mailto:, and add it to the result list if not already in there
             result_from_link = self.poss_link[7:]
             self.add_result([result_from_link])
             return False
@@ -398,7 +400,7 @@ class Scraper:
                 print(f'Status - {status}')
                 print(f'Urls scraped: {self.get_total_urls_scraped()}')
                 print(f'Urls to scrape: {len(self.new_urls)}')
-                self.print_emails()
+                self.print_results()
                 self.print_buggy_links()
                 self.set_current_url()
                 print(f'Processing: {self.current_url}', file=sys.stderr)
@@ -418,10 +420,10 @@ class Scraper:
             status = 'scraping complete'
             print(f'Status - {status}')
             print(f'Urls scraped: {self.get_total_urls_scraped()}')
-            self.print_emails()
+            self.print_results()
             self.print_buggy_links()
         except KeyboardInterrupt:
-            self.print_emails()
+            self.print_results()
             self.print_buggy_links()
 
     def key_word_scrape(self):
@@ -470,17 +472,17 @@ class Scraper:
         # Get file path with a dialog window
         file_path = get_file_path()
 
-        # Write email results to results.txt
+        # Write results to results.txt
         with open(file_path + '/results.txt', 'w') as results:
             if cls.result_dict:
-                for link, email_list in cls.result_dict.items():
-                    if email_list:
-                        results.write(f'Emails for: {link}\n')
-                        for email in email_list:
-                            if email == email_list[-1]:
-                                results.write(f'{email}\n\n')
+                for link, result_list in cls.result_dict.items():
+                    if result_list:
+                        results.write(f'Results for: {link}\n')
+                        for result in result_list:
+                            if result == result_list[-1]:
+                                results.write(f'{result}\n\n')
                                 break
-                            results.write(f'{email}\n')
+                            results.write(f'{result}\n')
                 print('Results saved!')
             else:
                 print('No Results to save!')
@@ -506,20 +508,20 @@ class Scraper:
             print('No buggy links found!')
 
     @classmethod
-    def print_emails(cls):
+    def print_results(cls):
         """
-        Print out all emails found for each link.
+        Print out all results found for each link.
         :return:
         """
         if cls.result_dict:
-            print('Emails Found:')
-            for link, email_list in cls.result_dict.items():
-                if email_list:
+            print('Results Found:')
+            for link, result_list in cls.result_dict.items():
+                if result_list:
                     print(f'\tUrl: {link}')
-                    for email in email_list:
-                        print(f'\t\t{email}')
+                    for result in result_list:
+                        print(f'\t\t{result}')
         else:
-            print('No Emails Found!')
+            print('No results found!')
 
     @staticmethod
     def clear():
@@ -530,5 +532,5 @@ class Scraper:
         os.system('clear')
 
     # TODO: Look into creating different regex for different information that can be scraped from a page
-    # TODO: Make a class method that writes the emails to a json dictionary
+    # TODO: Make a class method that writes the results to a json dictionary
     # TODO: Write a method that will print out the stats
