@@ -14,15 +14,15 @@ def base_url(url):
                '.mx', 'mil', '.ca', 'business.site', 'nfo',
                'health', 'biz', '.br', '.life', '.au']
 
-    # Add 'http://' if the url is missing scheme
+    # Add 'http://' if the new_urls is missing scheme
     if url.startswith('http://') is False and url.startswith('https://') is False:
         url = 'http://' + url
 
-    # Split out the base url from the url
+    # Split out the base new_urls from the new_urls
     parts = urlsplit(url)
     url_base = "{0.scheme}://{0.netloc}".format(parts)
 
-    # Check if the base url ends with a preferred extension domain and return the base url
+    # Check if the base new_urls ends with a preferred extension domain and return the base new_urls
     while len(url_base) > 3:
         for ex in ext_lst:
             if url_base.endswith(ex):
