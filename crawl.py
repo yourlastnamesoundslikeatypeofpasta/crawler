@@ -1,14 +1,11 @@
 """A class version of main.py"""
-import re
 import os
-import sys
-import string
 import shelve
+import string
+import sys
 import time
-import tkinter
 from collections import deque
 from urllib.parse import urljoin
-from tkinter import filedialog
 
 import requests
 from bs4 import BeautifulSoup
@@ -16,10 +13,8 @@ from bs4 import BeautifulSoup
 from base_url import base_url
 
 
-class Scraper:
-    """A class the crawls and scrapes a given url"""
-    # Dictionary that stores results {'base_url': ['email_0', 'phone#']}
-    result_dict = {}
+class Crawl:
+    """A class the crawls and scrapes a given new_urls"""
 
     # Dictionary that stores the number of times a base_url has been processed {'base_url': 21}
     url_counter = {}
@@ -33,106 +28,48 @@ class Scraper:
     # Default max number of links to add to the new_urls list
     url_cap = 1500
 
-    # Default sleep time (in seconds) between each scrape
+    # Default sleep time (in seconds) between each crawl
     sleep_time = 10
 
     # A debugging dictionary, {link_origin: [new_link, new_link_1, new_link_3]}
     debug_dict = {}
 
-    # Buggy url list
+    # Buggy new_urls list
     buggy_url_list = []
 
-    # def __init__(self, url, regex):
-    def __init__(self, url):
-        # Check if url is a string and over-write it as a list if it is
-        if type(url) == str:
-            url = [url.strip().lower()]
+    # def __init__(self, new_urls, regex):
+    def __init__(self, session_name, new_urls):
+        self.session_name = session_name
+        # Check if new_urls is a string and over-write it as a list if it is
+        if isinstance(new_urls, str):
+            new_urls = [new_urls.strip().lower()]
 
-        # todo: create a session_name attribute
+        # Create a deque from the new_urls list
+        self.new_urls = deque(new_urls)
 
-        # Create a deque from the url list
-        self.new_urls = deque(url)
-
-        # # Regex to use
-        # self.regex = regex
-        # regex = regex.lower()
-        # if regex == 'email':
-        #     self.regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
         # elif regex == 'CAFR':
         #     self.regex = r"(Comprehensive Annual Financial Report)|(CAFR)"
 
-        # Where HTML text is stored for the current url
+        # Where HTML text is stored for the current new_urls
         self.response = None
 
-        # The current url being processed
+        # The current new_urls being processed
         self.current_url = None
 
         # A possible link that may have been found from the HTML
         self.poss_link = None
 
-        # Create a default dictionary entry for each website in result_dict
-        for link in url:
-            self.result_dict.setdefault(base_url(link), [])
+        # Create a default dictionary entries
+        for link in new_urls:
             self.url_counter.setdefault(base_url(link), 0)
             self.queue_counter.setdefault(base_url(link), 0)
 
     def get_current_base_url(self):
         """
-        Get the current base url.
-        :return: Base url.
+        Get the current base new_urls.
+        :return: Base new_urls.
         """
         return base_url(self.current_url)
-
-    def get_result_with_html_parser(self):
-        """
-        If get_result_from_response doesn't work, then go through each <a> tag,
-        use regex in each tag, if the tag has a results add it to the result_list.
-
-        For some reason using beautiful soup automatically converts
-        unicode chars into letters. So using beautiful soup and looping through
-        each tag and checking if the tag contains a result that has been decoded
-        with beautiful soup is the best option, make this comment prettier in
-        the future please
-        :return: result_list
-        """
-        soup = BeautifulSoup(self.response, features='html.parser')
-        result_list = []
-
-        for anchor in soup.find_all('a'):
-            # new_results = re.findall(self.regex,
-            #                         str(anchor), re.I)
-            new_results = re.findall(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
-                                     str(anchor), re.I)
-            if new_results:
-                if len(new_results) > 2:
-                    print('More than 1 result found in link. Refer to .get_result_with_html_parser')
-                    print(new_results)
-
-                new_results = new_results[0]
-                if new_results not in result_list:
-                    result_list.append(new_results.lower())
-        return result_list
-
-    def get_result_from_response(self):
-        """
-        Get results from the html stored in response using regex and
-        use add_result to add the result to the result_dict or
-        use get_result_with_html_parser and regex to look for
-        a result in the <a> tags
-        :return: None
-        """
-        # get new results from response html
-        # new_results_list = list(set(re.findall(self.regex,
-        #                                  self.response, re.I)))
-        new_results_list = list(set(re.findall(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
-                                               self.response, re.I)))
-        if new_results_list:
-            new_results_list = [i.lower() for i in new_results_list]
-            self.add_result(new_results_list)
-        else:
-            new_results_list = self.get_result_with_html_parser()
-            if new_results_list:
-                self.add_result(new_results_list)
 
     def get_new_urls_from_html(self):
         """
@@ -140,13 +77,13 @@ class Scraper:
          and if they're verified add them to new_urls list.
         :return: None
         """
-        # get new url links from html and add them to the new urls deque()
+        # get new new_urls links from html and add them to the new urls deque()
         soup = BeautifulSoup(self.response, features='html.parser')
 
         # Go through every link in html and add it to list
         for anchor in soup.find_all('a'):
 
-            # check if base url is capped
+            # check if base new_urls is capped
             if self.queue_counter.get(self.get_current_base_url()) >= self.url_cap:
                 url_base = self.get_current_base_url()
                 url_base_count = self.queue_counter[self.get_current_base_url()]
@@ -188,7 +125,7 @@ class Scraper:
             # lower poss_link to avoid duplicate links with different casing
             self.poss_link = self.poss_link.lower()
 
-            # Add the url to the new_urls and print out that a link was added
+            # Add the new_urls to the new_urls and print out that a link was added
             if self.is_poss_link_a_link():
 
                 # Create an entry in the debug dictionary
@@ -215,7 +152,7 @@ class Scraper:
     def set_new_urls(self, url_list):
         """
         Update new_urls with a list of new urls.
-        :param url_list: a string or list of new urls to scrape
+        :param url_list: a string or list of new urls to crawl
         :return: None
         """
         if type(url_list) == list:
@@ -228,7 +165,7 @@ class Scraper:
     def set_current_url(self):
         """
         Set current_url to the first object from new_urls
-        and then add that url to the processed_urls list.
+        and then add that new_urls to the processed_urls list.
         :return: None
         """
         url = self.new_urls.popleft()
@@ -240,7 +177,7 @@ class Scraper:
         Set response with the html from the current_url.
         :return: None
         """
-        # Get current url and set response to the HTML received
+        # Get current new_urls and set response to the HTML received
         url = self.current_url
         try:
             # TODO: Look into adding headers and proxies.
@@ -249,7 +186,7 @@ class Scraper:
             status_code = response.status_code
 
             if status_code != 200:
-                # Add the current url and new link to the the debug dictionary and print out the status code
+                # Add the current new_urls and new link to the the debug dictionary and print out the status code
                 print(f'Status Code Error: {self.current_url}: {status_code}', file=sys.stderr)
                 self.buggy_url_list.append(self.current_url)
                 self.response = None
@@ -261,27 +198,13 @@ class Scraper:
                 requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
             print(f'Link Error: {e}')
 
-    def add_result(self, new_result_list):
-        """
-        Add results found to result_dict.
-        :param new_result_list: List of newly found results.
-        :return: None
-        """
-        # If result in the list isn't in the result dict, add it, else, remove it from new_result_list
-        result_from_rslt_dict = self.result_dict[self.get_current_base_url()]
-        new_result_list = [i.lower() for i in new_result_list]
-        for result in new_result_list:
-            if result in result_from_rslt_dict:
-                continue
-            result_from_rslt_dict.append(result)
-
     def add_to_new_urls(self, url):
         """
-        Add a new url to new_urls.
-        :param url: The new url
+        Add a new new_urls to new_urls.
+        :param url: The new new_urls
         :return: None
         """
-        # Add another url to new_urls
+        # Add another new_urls to new_urls
         self.new_urls.append(url)
 
     def add_url_counter(self):
@@ -289,7 +212,7 @@ class Scraper:
         Increment the base_url in url_counter by 1
         :return: None
         """
-        # increment the url counter in url_counter by 1
+        # increment the new_urls counter in url_counter by 1
         self.url_counter[self.get_current_base_url()] += 1
 
     def add_queue_counter(self):
@@ -301,8 +224,8 @@ class Scraper:
 
     def is_url_capped(self):
         """
-        Check if the url is capped at the currently set url_cap.
-        :return: True if the url is capped, False if it isn't
+        Check if the new_urls is capped at the currently set url_cap.
+        :return: True if the new_urls is capped, False if it isn't
         """
         if self.url_counter.get(self.get_current_base_url()) >= self.url_cap:
             return True
@@ -329,32 +252,27 @@ class Scraper:
         if self.poss_link in self.new_urls:
             # link is already in new urls
             return False
-        if self.poss_link.startswith('mailto:'):  # todo: possibly delete this
-            # link is a mailto: link, extract email from mailto:, and add it to the result list if not already in there
-            result_from_link = self.poss_link[7:]
-            self.add_result([result_from_link])
-            return False
         if self.get_current_base_url() not in self.poss_link:
-            # Base url is not in the link, ex. 'http://instagram.com/company_profile
+            # Base new_urls is not in the link, ex. 'http://instagram.com/company_profile
             return False
         if 'mailto:' in self.poss_link:
             return False
         return True
-
-    def save_progress(self, name_session):
+    
+    def save_progress(self):
         """
-        Save the variables new_urls, response, current_url, poss_link,result_dict,
+        Save the variables new_urls, response, current_url, poss_link,
         url_counter, queue_counter, url_cap, sleep_time, debug_dict,
         and buggy_url_list with shelve.
         :return: None
         """
-        with shelve.open(f'./save/{name_session}.db') as save:
+        with shelve.open(f'./save/{self.session_name}.db') as save:
             save['main'] = {
+                'session_name': self.session_name,
                 'new_urls': self.new_urls,
                 'response': self.response,
                 'current_url': self.current_url,
                 'poss_link': self.poss_link,
-                'result_dict': self.result_dict,
                 'url_counter': self.url_counter,
                 'queue_counter': self.queue_counter,
                 'url_cap': self.url_cap,
@@ -363,129 +281,57 @@ class Scraper:
                 'buggy_url_list': self.buggy_url_list,
             }
 
-    def scrape(self):
+    def crawl(self):
         """
-        Scrape the link(s) that the user enters and print the results to the screen.
+        Crawl the deque of urls
         :return: None
         """
-
-        def get_name_session():
-            """
-            Get the name of this scrape session from the user.
-            :return: a string of the name of the session
-            """
-            # chars not allowed
-            illegal_char_list = ['\\', '/', ':', 'NUL', ':', '*', '"', '<', '>', '|']
-            while True:
-                ns = input('What would you like to name this scrape session?\n:').lower().strip()
-
-                # check if the name session has any illegal character
-                illegal_char = False
-                for char in ns:
-                    if char in illegal_char_list:
-                        print(f'IllegalCharacter: {char}. Your session name cannot have the following characters:')
-                        print(','.join(illegal_char_list))
-                        illegal_char = True
-                        break
-                if illegal_char:
-                    continue
-                else:
-                    return ns
-
-        name_session = get_name_session()
+        
+        # begin crawling
         try:
             while len(self.new_urls):
-                print(f'Session - {name_session}')
-                status = 'scraping'
-                print(f'Status - {status}')
-                print(f'Urls scraped: {self.get_total_urls_scraped()}')
-                print(f'Urls to scrape: {len(self.new_urls)}')
-                self.print_results()
+                print(f'Session - {self.session_name}')
+                status = 'crawling...'
+                print(f'Crawl Status - {status}')
+                print(f'Crawls Completed: {self.get_total_urls_scraped()}')
+                print(f'Crawl Queue: {len(self.new_urls)}')
                 self.print_buggy_links()
                 self.set_current_url()
                 print(f'Processing: {self.current_url}', file=sys.stderr)
                 self.set_response_with_html()
                 if self.response:
-                    self.get_result_from_response()
                     self.get_new_urls_from_html()
-                    self.save_progress(name_session)
                     time.sleep(self.sleep_time)
-                self.save_progress(name_session)
-                time.sleep(.1)
+                self.save_progress()
                 self.clear()
+                time.sleep(.1)
 
-            # scrape complete
-            self.save_progress(name_session)
-            print(f'Session - {name_session}')
-            status = 'scraping complete'
-            print(f'Status - {status}')
-            print(f'Urls scraped: {self.get_total_urls_scraped()}')
-            self.print_results()
+            # crawl complete
+            self.save_progress()
+            print(f'Session - {self.session_name}')
+            status = 'crawl complete'
+            print(f'Crawl Status - {status}')
+            print(f'Crawls Completed: {self.get_total_urls_scraped()}')
             self.print_buggy_links()
         except KeyboardInterrupt:
-            self.print_results()
             self.print_buggy_links()
-
-    def key_word_scrape(self):
-        pass
 
     @classmethod
     def from_save(cls, name_session):
         with shelve.open(f'./save/{name_session}.db', flag="r") as save:
             save_dict = save['main']
             new_urls = save_dict.get('new_urls')
+            session_name = save_dict['session_name']
             cls.response = save_dict.get('response')
             cls.current_url = save_dict.get('current_url')
             cls.poss_link = save_dict.get('poss_link')
-            cls.result_dict = save_dict.get('result_dict')
             cls.url_counter = save_dict.get('url_counter')
             cls.queue_counter = save_dict.get('queue_counter')
             cls.url_cap = save_dict.get('url_cap')
             cls.sleep_time = save_dict.get('sleep_time')
             cls.debug_dict = save_dict.get('debug_dict')
             cls.buggy_url_list = save_dict.get('buggy_url_list')
-            return cls(new_urls)
-
-    @classmethod
-    def write_to_txt(cls):
-        """
-        When crawl is complete, write the contents of result_dict to a text file.
-        :return: None
-        """
-
-        def get_file_path():
-            """
-            Open a file dialog window and ask the user where they would like to
-            save their results
-            :return: a string of the absolute file path
-            """
-            # Set up the tkinter object
-            root = tkinter.Tk()
-            root.withdraw()
-
-            # Bring up the dialog window
-            curr_path = os.getcwd()
-            txt_path = filedialog.askdirectory(parent=root, initialdir=curr_path,
-                                               title='Save results to...')
-            return txt_path
-
-        # Get file path with a dialog window
-        file_path = get_file_path()
-
-        # Write results to results.txt
-        with open(file_path + '/results.txt', 'w') as results:
-            if cls.result_dict:
-                for link, result_list in cls.result_dict.items():
-                    if result_list:
-                        results.write(f'Results for: {link}\n')
-                        for result in result_list:
-                            if result == result_list[-1]:
-                                results.write(f'{result}\n\n')
-                                break
-                            results.write(f'{result}\n')
-                print('Results saved!')
-            else:
-                print('No Results to save!')
+            return cls(session_name, new_urls)
 
     @classmethod
     def print_buggy_links(cls):
@@ -507,22 +353,6 @@ class Scraper:
         else:
             print('No buggy links found!')
 
-    @classmethod
-    def print_results(cls):
-        """
-        Print out all results found for each link.
-        :return:
-        """
-        if cls.result_dict:
-            print('Results Found:')
-            for link, result_list in cls.result_dict.items():
-                if result_list:
-                    print(f'\tUrl: {link}')
-                    for result in result_list:
-                        print(f'\t\t{result}')
-        else:
-            print('No results found!')
-
     @staticmethod
     def clear():
         """
@@ -531,6 +361,5 @@ class Scraper:
         """
         os.system('clear')
 
-    # TODO: Look into creating different regex for different information that can be scraped from a page
     # TODO: Make a class method that writes the results to a json dictionary
     # TODO: Write a method that will print out the stats
