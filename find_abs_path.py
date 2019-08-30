@@ -1,7 +1,7 @@
 def find_abs_path(link, rel_link):
     """
-    Find the url from a relative link that uses 'dots'. ex. '../../directory/index.html'
-    :param link: The current url where the relative link was found
+    Find the new_urls from a relative link that uses 'dots'. ex. '../../directory/index.html'
+    :param link: The current new_urls where the relative link was found
             ex. 'http://books.toscrape.com/catalogue/category/books/travel_2/index.html'
     :param rel_link: A relative link that includes 'dots'. ex. '../../directory/index.html'
     :return:
