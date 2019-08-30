@@ -29,7 +29,7 @@ class Crawl:
     url_cap = 1500
 
     # Default sleep time (in seconds) between each crawl
-    sleep_time = 10
+    sleep_time = 0
 
     # A debugging dictionary, {link_origin: [new_link, new_link_1, new_link_3]}
     debug_dict = {}
@@ -258,7 +258,7 @@ class Crawl:
         if 'mailto:' in self.poss_link:
             return False
         return True
-    
+
     def save_progress(self):
         """
         Save the variables new_urls, response, current_url, poss_link,
@@ -286,7 +286,7 @@ class Crawl:
         Crawl the deque of urls
         :return: None
         """
-        
+
         # begin crawling
         try:
             while len(self.new_urls):
@@ -320,8 +320,8 @@ class Crawl:
     def from_save(cls, name_session):
         with shelve.open(f'./save/{name_session}.db', flag="r") as save:
             save_dict = save['main']
-            new_urls = save_dict.get('new_urls')
             session_name = save_dict['session_name']
+            new_urls = save_dict.get('new_urls')
             cls.response = save_dict.get('response')
             cls.current_url = save_dict.get('current_url')
             cls.poss_link = save_dict.get('poss_link')
