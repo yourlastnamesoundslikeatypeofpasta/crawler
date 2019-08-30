@@ -1,5 +1,6 @@
-from scraper_class import Scraper
 import os
+
+from crawl import Crawl
 
 
 def main():
@@ -8,19 +9,44 @@ def main():
         Create a new crawl session, and then crawl.
         :return: None
         """
-        # ask the user if they're submitting one url or a list of urls
+
+        def get_name_session():
+            """
+            Get the name of this crawl session from the user.
+            :return: a string of the name of the session
+            """
+            # chars not allowed
+            illegal_char_list = ['\\', '/', ':', 'NUL', ':', '*', '"', '<', '>', '|']
+            while True:
+                ns = input('What would you like to name this crawl session?\n:').lower().strip()
+
+                # check if the name session has any illegal character
+                illegal_char = False
+                for char in ns:
+                    if char in illegal_char_list:
+                        print(f'IllegalCharacter: {char}. Your session name cannot have the following characters:')
+                        print(','.join(illegal_char_list))
+                        illegal_char = True
+                        break
+                if illegal_char:
+                    continue
+                else:
+                    return ns
+
+        # ask the user if they're submitting one new_urls or a list of urls
         # todo: check if the inputted string has commas and convert to list if it,
         #  instead of asking the user if they're entering a string or a list.
-        from_string_or_list = input('Would you like to scrape a list of urls or one url? [L/S]\n: ').lower()
+        from_string_or_list = input('Would you like to crawl a list of urls or one new_urls? [L/S]\n: ').lower()
         if from_string_or_list == 'l':
             url_list = input('Enter your urls separated with a comma\n: ')
             input_url = url_list.split(',')
-            input_url = [i.strip() for i in input_url]
+            input_url = [i.strip().lower() for i in input_url]
         else:
-            input_url = input('Enter your url\n: ')
-        url = Scraper(input_url)
+            input_url = input('Enter your new_urls\n: ')
+        session_name = get_name_session()
+        url = Crawl(session_name, input_url)
         url.sleep_time = 2
-        url.scrape()
+        url.crawl()
 
     def resume_sesh():
         """
@@ -44,8 +70,8 @@ def main():
                 print(filename)
                 printed_files_list.append(filename)
         save_file = input(': ')
-        url = Scraper.from_save(save_file)
-        url.scrape()
+        url = Crawl.from_save(save_file)
+        url.crawl()
 
     print('Welcome to Scraper!')
     try:
