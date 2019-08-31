@@ -78,11 +78,11 @@ def main():
         while True:
             print('[NEW SESSION] or [RESUME SESSION] or [QUIT] [N/R/Q]')
             sesh_response = input(': ').lower()
-            if sesh_response == 'n':
+            if 'n' in sesh_response:
                 new_sesh()
-            elif sesh_response == 'r':
+            elif 'r' in sesh_response:
                 resume_sesh()
-            elif sesh_response == 'q':
+            elif 'q' in sesh_response:
                 print('quitting')
                 break
             else:
