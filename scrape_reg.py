@@ -45,8 +45,6 @@ class ScrapeReg(Crawl):
         result_list = []
 
         for anchor in soup.find_all('a'):
-            # new_results = re.findall(self.regex,
-            #                         str(anchor), re.I)
             new_results = re.findall(self.regex,
                                      str(anchor), re.I)
             if new_results:
@@ -59,7 +57,7 @@ class ScrapeReg(Crawl):
                     result_list.append(new_results.lower())
         return result_list
 
-    def get_result_from_response(self):  # fixme: not working
+    def get_result_from_response(self):
         """
         Get results from the html stored in response using regex and
         use add_result to add the result to the result_dict or
@@ -68,8 +66,6 @@ class ScrapeReg(Crawl):
         :return: None
         """
         # get new results from response html
-        # new_results_list = list(set(re.findall(self.regex,
-        #                                  self.response, re.I)))
         new_results_list = list(set(re.findall(self.regex,
                                                self.response, re.I)))
 
@@ -150,7 +146,7 @@ class ScrapeReg(Crawl):
                 if result_list:
                     print(f'\tUrl: {link}')
                     for result in result_list:
-                        print(f'\t\t{result}')
+                        print(f'\t\tResult: {result}')
         else:
             print('No results found!')  # fixme: not printing no results when no results are found
 
@@ -228,4 +224,3 @@ class ScrapeReg(Crawl):
         except KeyboardInterrupt:
             self.print_results()
             self.print_buggy_links()
-
