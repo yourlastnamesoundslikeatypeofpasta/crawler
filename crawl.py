@@ -37,7 +37,7 @@ class Crawl:
     # Buggy new_urls list
     buggy_url_list = []
 
-    # def __init__(self, new_urls, regex):
+    # def __init__(self, new_urls, eric):
     def __init__(self, session_name, new_urls):
         self.session_name = session_name
         # Check if new_urls is a string and over-write it as a list if it is
@@ -47,8 +47,8 @@ class Crawl:
         # Create a deque from the new_urls list
         self.new_urls = deque(new_urls)
 
-        # elif regex == 'CAFR':
-        #     self.regex = r"(Comprehensive Annual Financial Report)|(CAFR)"
+        # elif eric == 'CAFR':
+        #     self.eric = r"(Comprehensive Annual Financial Report)|(CAFR)"
 
         # Where HTML text is stored for the current new_urls
         self.response = None
@@ -236,7 +236,7 @@ class Crawl:
         Check if self.poss_link is a valid relative link.
         :return: True if the relative link is value; False if the relative link isn't.
         """
-        exclude_ext = ['image', 'pdf', 'jpg', 'png', 'gif', 'xlsx',
+        exclude_ext = ['image_token', 'pdf', 'jpg', 'png', 'gif', 'xlsx',
                        'mp3', 'csv', 'wma', 'provider', 'specialtie', 'pptx',
                        'mp4', 'download', 'javascript', 'tel:', 'pdf', 'ppt',
                        'specialty']
