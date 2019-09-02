@@ -6,11 +6,13 @@ import sys
 import time
 from collections import deque
 from urllib.parse import urljoin
+from random import randint
 
 import requests
 from bs4 import BeautifulSoup
 
 from base_url import base_url
+from get_website_name import get_web_name
 
 
 class Crawl:
@@ -37,18 +39,17 @@ class Crawl:
     # Buggy new_urls list
     buggy_url_list = []
 
-    # def __init__(self, new_urls, regex):
-    def __init__(self, session_name, new_urls):
-        self.session_name = session_name
-        # Check if new_urls is a string and over-write it as a list if it is
+    def __init__(self, new_urls):
+        # bypass get_web_name if loading up a previous save
         if isinstance(new_urls, str):
-            new_urls = [new_urls.strip().lower()]
+            self.session_name = get_web_name(new_urls)
 
         # Create a deque from the new_urls list
-        self.new_urls = deque(new_urls)
-
-        # elif eric == 'CAFR':
-        #     self.eric = r"(Comprehensive Annual Financial Report)|(CAFR)"
+        if not isinstance(new_urls, deque):
+            # create a deque if not loading from a save
+            self.new_urls = deque([new_urls])
+        else:
+            self.new_urls = new_urls
 
         # Where HTML text is stored for the current new_urls
         self.response = None
@@ -60,6 +61,8 @@ class Crawl:
         self.poss_link = None
 
         # Create a default dictionary entries
+        if isinstance(new_urls, str):
+            new_urls = [new_urls]
         for link in new_urls:
             self.url_counter.setdefault(base_url(link), 0)
             self.queue_counter.setdefault(base_url(link), 0)
@@ -135,7 +138,7 @@ class Crawl:
 
                 # add the link to new_urls
                 self.add_to_new_urls(self.poss_link)
-                print(f'New URL Added: {self.poss_link}')
+                # print(f'New URL Added: {self.poss_link}')
                 self.add_queue_counter()
 
     def get_total_urls_scraped(self):
@@ -288,26 +291,32 @@ class Crawl:
         """
 
         # begin crawling
+        session = self.session_name
         try:
             while len(self.new_urls):
-                print(f'Session - {self.session_name}')
-                status = 'crawling...'
-                print(f'Crawl Status - {status}')
-                print(f'Crawls Completed: {self.get_total_urls_scraped()}')
-                print(f'Crawl Queue: {len(self.new_urls)}')
-                self.print_buggy_links()
                 self.set_current_url()
-                print(f'Processing: {self.current_url}', file=sys.stderr)
+                queue = len(self.new_urls)
+                processing = self.current_url
+                status = 'crawling'
+                print(f'|Session:{session}|Status:{status}|Queue:{queue}|Processing:{processing}')
+                # print(f'Session - {self.session_name}')
+                # status = 'crawling...'
+                # print(f'Crawl Status - {status}')
+                # print(f'Crawls Completed: {self.get_total_urls_scraped()}')
+                # print(f'Crawl Queue: {len(self.new_urls)}')
+                # self.print_buggy_links()
+                # print(f'Processing: {self.current_url}', file=sys.stderr)
                 self.set_response_with_html()
                 if self.response:
                     self.get_new_urls_from_html()
                     time.sleep(self.sleep_time)
+                # time.sleep(randint(0, 5))
                 self.save_progress()
-                self.clear()
+                # self.clear()
                 time.sleep(.1)
 
             # crawl complete
-            self.save_progress()
+            # self.save_progress()
             print(f'Session - {self.session_name}')
             status = 'crawl complete'
             print(f'Crawl Status - {status}')
@@ -320,8 +329,8 @@ class Crawl:
     def from_save(cls, name_session):
         with shelve.open(f'./save/{name_session}.db', flag="r") as save:
             save_dict = save['main']
-            session_name = save_dict['session_name']
             new_urls = save_dict.get('new_urls')
+            cls.session_name = save_dict['session_name']
             cls.response = save_dict.get('response')
             cls.current_url = save_dict.get('current_url')
             cls.poss_link = save_dict.get('poss_link')
@@ -331,7 +340,7 @@ class Crawl:
             cls.sleep_time = save_dict.get('sleep_time')
             cls.debug_dict = save_dict.get('debug_dict')
             cls.buggy_url_list = save_dict.get('buggy_url_list')
-            return cls(session_name, new_urls)
+            return cls(new_urls)
 
     @classmethod
     def print_buggy_links(cls):
