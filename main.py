@@ -33,20 +33,26 @@ def main():
                 else:
                     return ns
 
-        # ask the user if they're submitting one new_urls or a list of urls
-        # todo: check if the inputted string has commas and convert to list if it,
-        #  instead of asking the user if they're entering a string or a list.
-        from_string_or_list = input('Would you like to crawl a list of urls or one new_urls? [L/S]\n: ').lower()
-        if from_string_or_list == 'l':
-            url_list = input('Enter your urls separated with a comma\n: ')
-            input_url = url_list.split(',')
-            input_url = [i.strip().lower() for i in input_url]
-        else:
-            input_url = input('Enter your new_urls\n: ')
+        def list_or_string(links):
+            """
+            Convert the input into a list. If the input has commas,
+            convert it to a list.
+            :param links: inputted url(s).
+            :return: a list of urls or a list with one url
+            """
+            if ',' in links:
+                links = links.split(',')
+                links = [i.strip() for i in links]
+                return links
+            else:
+                return [links]
+
         session_name = get_name_session()
-        url = Crawl(session_name, input_url)
-        url.sleep_time = 2
-        url.crawl()
+
+        # ask the user if they're submitting one new_urls or a list of urls
+        url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
+        url_list = list_or_string(url)
+        Crawl(session_name, url_list).crawl()
 
     def resume_sesh():
         """
