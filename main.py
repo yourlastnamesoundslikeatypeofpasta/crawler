@@ -1,6 +1,11 @@
 import os
-
+import multiprocessing
 from crawl import Crawl
+
+
+def initiate_crawl(url):
+    """Crawl a given url with multiprocessing"""
+    Crawl(url).crawl()
 
 
 def main():
@@ -9,29 +14,6 @@ def main():
         Create a new crawl session, and then crawl.
         :return: None
         """
-
-        def get_name_session():
-            """
-            Get the name of this crawl session from the user.
-            :return: a string of the name of the session
-            """
-            # chars not allowed
-            illegal_char_list = ['\\', '/', ':', 'NUL', ':', '*', '"', '<', '>', '|']
-            while True:
-                ns = input('What would you like to name this crawl session?\n:').lower().strip()
-
-                # check if the name session has any illegal character
-                illegal_char = False
-                for char in ns:
-                    if char in illegal_char_list:
-                        print(f'IllegalCharacter: {char}. Your session name cannot have the following characters:')
-                        print(','.join(illegal_char_list))
-                        illegal_char = True
-                        break
-                if illegal_char:
-                    continue
-                else:
-                    return ns
 
         def list_or_string(links):
             """
@@ -47,12 +29,23 @@ def main():
             else:
                 return [links]
 
-        session_name = get_name_session()
-
         # ask the user if they're submitting one new_urls or a list of urls
         url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
         url_list = list_or_string(url)
-        Crawl(session_name, url_list).crawl()
+
+        # initiate multithreading if the user submits a list of urls
+        list_count = len(url_list)
+        thread_count = multiprocessing.cpu_count() * 2
+        if list_count > thread_count:
+            pool_size = thread_count
+        else:
+            pool_size = list_count
+        pool = multiprocessing.Pool(
+            processes=pool_size
+        )
+        pool_outputs = pool.map(initiate_crawl, url_list)
+        pool.close()
+        pool.join()
 
     def resume_sesh():
         """
