@@ -90,7 +90,7 @@ class Crawl:
             if self.queue_counter.get(self.get_current_base_url()) >= self.url_cap:
                 url_base = self.get_current_base_url()
                 url_base_count = self.queue_counter[self.get_current_base_url()]
-                print(f'Queue Capped: {url_base}: {url_base_count}')
+                # print(f'Queue Capped: {url_base}: {url_base_count}')
                 break
 
             try:
@@ -124,6 +124,7 @@ class Crawl:
                 print(f'Error: {err}', file=sys.stderr)
                 print(f'poss link: {self.poss_link}', file=sys.stderr)
                 print(f'Anchor: {anchor}', file=sys.stderr)
+                continue
 
             # lower poss_link to avoid duplicate links with different casing
             self.poss_link = self.poss_link.lower()
@@ -310,17 +311,16 @@ class Crawl:
                 if self.response:
                     self.get_new_urls_from_html()
                     time.sleep(self.sleep_time)
-                # time.sleep(randint(0, 5))
                 self.save_progress()
-                # self.clear()
                 time.sleep(.1)
 
             # crawl complete
-            # self.save_progress()
-            print(f'Session - {self.session_name}')
+            self.save_progress()
+            # print(f'Session - {self.session_name}')
             status = 'crawl complete'
-            print(f'Crawl Status - {status}')
-            print(f'Crawls Completed: {self.get_total_urls_scraped()}')
+            print(f'|Session:{session}|Status:{status}|Queue:{queue}|')
+            # print(f'Crawl Status - {status}')
+            # print(f'Crawls Completed: {self.get_total_urls_scraped()}')
             self.print_buggy_links()
         except KeyboardInterrupt:
             self.print_buggy_links()
