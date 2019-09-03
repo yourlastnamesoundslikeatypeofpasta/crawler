@@ -1,4 +1,5 @@
-"""NOTE: RUN ME AS ADMIN/SUDO! Scrape a list of urls with multiprocessing in parallel."""
+"""NOTE: RUN ME AS ADMIN/SUDO if a directory error is given! Scrape a
+ list of urls with multiprocessing in parallel."""
 import multiprocessing
 from crawl import Crawl
 
