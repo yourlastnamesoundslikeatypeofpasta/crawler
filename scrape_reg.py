@@ -140,7 +140,9 @@ class ScrapeReg(Crawl):
         Print out all results found for each link.
         :return:
         """
-        if cls.result_dict:
+        # check if the result_dict has any values within it
+        values = [i for i in cls.result_dict.values() if i]
+        if values:
             print('Results Found:')
             for link, result_list in cls.result_dict.items():
                 if result_list:
@@ -148,7 +150,7 @@ class ScrapeReg(Crawl):
                     for result in result_list:
                         print(f'\t\tResult: {result}')
         else:
-            print('No results found!')  # fixme: not printing no results when no results are found
+            print('No results found!')
 
     @classmethod
     def write_to_txt(cls):
