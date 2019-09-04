@@ -36,6 +36,8 @@ def main():
         # initiate multithreading if the user submits a list of urls
         list_count = len(url_list)
         thread_count = multiprocessing.cpu_count() * 2
+
+        # create a pool size the size of the list, if the list is larger than the machines thread count, use max threads
         if list_count > thread_count:
             pool_size = thread_count
         else:
@@ -43,16 +45,28 @@ def main():
         pool = multiprocessing.Pool(
             processes=pool_size
         )
-        pool_outputs = pool.map(initiate_crawl, url_list)
+        pool_outputs = pool.map(initiate_crawl, url_list)  # todo: create a return statement for .crawl: TEST ME!
         pool.close()
         pool.join()
+        print(pool_outputs)
 
     def resume_sesh():
         """
         List saved crawl sessions, and then resume crawl session.
         :return: None
         """
-        print('Please select a save file:')
+        def print_sesh_list(sesh_lis):
+            """
+            Print the current session list.
+            :param sesh_lis: The current session list
+            :return:
+            """
+            if not sesh_lis:
+                print('Session list:\n\tCurrently Empty :(')
+            else:
+                for session in session_list:
+                    print(f'\t{session}')
+        print('|Enter the sessions you wish to resume|Enter [Q] to initiate crawl sessions')
 
         # print out saved .db files
         path = './save'
@@ -68,7 +82,28 @@ def main():
             if filename not in printed_files_list:
                 print(filename)
                 printed_files_list.append(filename)
-        save_file = input(': ')
+
+
+        # todo: create a code block that asks the user which sessions they would like to resume and
+        #  resume the sessions using multiprocessing
+        session_list = []
+        while True:
+            print_sesh_list(session_list)
+            session_name = input(': ').lower()
+            if session_name in printed_files_list:
+                session_list.append(session_name)
+                print(f'{session_name} added to resume session list')
+                print('Session list:')
+                for session in session_list:
+                    print(f'\t{session}')
+            elif session_name == 'q':
+                break
+            else:
+                print(f'Session not found: {session_name}')
+
+
+
+
         url = Crawl.from_save(save_file)
         url.crawl()
 
@@ -76,7 +111,7 @@ def main():
     try:
         while True:
             print('[NEW SESSION] or [RESUME SESSION] or [QUIT] [N/R/Q]')
-            sesh_response = input(': ').lower()
+            sesh_response = input(': ').lower()  # todo: introduce session types
             if 'n' in sesh_response:
                 new_sesh()
             elif 'r' in sesh_response:
