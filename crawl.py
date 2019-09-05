@@ -318,10 +318,10 @@ class Crawl:
             self.save_progress()
             # print(f'Session - {self.session_name}')
             status = 'crawl complete'
-            print(f'|Session:{session}|Status:{status}|Queue:0|')
+            print(f'|Session:{session}|Status:{status}|')
             # print(f'Crawl Status - {status}')
             # print(f'Crawls Completed: {self.get_total_urls_scraped()}')
-            self.print_buggy_links()
+            # self.print_buggy_links()
         except KeyboardInterrupt:
             self.print_buggy_links()
         return {'session_name': self.session_name, 'url_counter': self.url_counter, 'debug_dict': self.debug_dict}
