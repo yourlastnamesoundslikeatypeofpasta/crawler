@@ -5,7 +5,7 @@ from crawl import Crawl
 
 def initiate_crawl(url):
     """Crawl a given url with multiprocessing"""
-    Crawl(url).crawl()
+    return Crawl(url).crawl()
 
 
 def resume_crawl(crawl_object):
@@ -14,9 +14,47 @@ def resume_crawl(crawl_object):
     :param crawl_object: The Crawl object
     :return: None
     """
-    crawl_object.crawl()
+    return crawl_object.crawl()
+
 
 def main():
+
+    def multiprocess(func, iterable):
+        """
+        Initiate the multiprocess pool method.
+        :param func: a reference to the function/method to be used
+        :param iterable: an iterable of the variables to pass into the function
+        :return: a list of outputs from the mapping func, iterable
+        """
+        def create_pool_size(session_list):
+            """
+            Create an appropriate pool size. If the length of domains exceeds the number of threads
+            than the pool_size will be the max number of threads, else the pool size will be the
+            number of domains entered.
+            :param session_list:
+            :return:
+            """
+            # multiprocess crawl threads
+            list_count = len(session_list)
+            thread_count = multiprocessing.cpu_count() * 2
+
+            # create a pool size based on the size of session_list
+            if list_count > thread_count:
+                pool_size = thread_count
+            else:
+                pool_size = list_count
+            return pool_size
+
+        pool_size = create_pool_size(iterable)
+        pool = multiprocessing.Pool(
+            processes=pool_size
+        )
+        pool_outputs = pool.map(func, iterable)
+        pool.close()
+        pool.join()
+
+        return print(pool_outputs)
+
     def new_sesh():
         """
         Create a new crawl session, and then crawl.
@@ -41,22 +79,14 @@ def main():
         url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
         url_list = list_or_string(url)
 
-        # initiate multithreading if the user submits a list of urls
-        list_count = len(url_list)
-        thread_count = multiprocessing.cpu_count() * 2
+        # if the user wishes to scrape one url, don't use multiprocessing
+        if len(url_list) == 1:
+            url = url_list[0]
+            output = initiate_crawl(url)
+            return output
 
-        # create a pool size the size of the list, if the list is larger than the machines thread count, use max threads
-        if list_count > thread_count:
-            pool_size = thread_count
-        else:
-            pool_size = list_count
-        pool = multiprocessing.Pool(
-            processes=pool_size
-        )
-        pool_outputs = pool.map(initiate_crawl, url_list)  # todo: create a return statement for .crawl: TEST ME!
-        pool.close()
-        pool.join()
-        print(pool_outputs)
+        # initiate multiprocessing
+        multiprocess(initiate_crawl, url_list)
 
     def resume_sesh():
         """
@@ -64,17 +94,17 @@ def main():
         :return: None
         """
 
-        def print_sesh_list(sesh_lis):
+        def print_sesh_list(sesh_list):
             """
             Print the current session list.
-            :param sesh_lis: The current session list
+            :param sesh_list: The current session list
             :return:
             """
-            if not sesh_lis:
+            if not sesh_list:
                 print('Resume Session List:\n\tCurrently Empty :(')
             else:
                 print('Resume Session list:')
-                for session in session_list:
+                for session in sesh_list:
                     print(f'\t{session}')
 
         def print_saved_sessions(file_list):
@@ -102,73 +132,68 @@ def main():
                 if file_extension != '.db':
                     filename, file_extension = os.path.splitext(filename)
 
-                if filename not in printed_files_list:
+                if filename not in printed_files_list and file_extension == '.db':
                     printed_files_list.append(filename)
             return printed_files_list
 
-        def create_crawl_objects(session_list):
+        def create_crawl_objects(sesh_list):
             """
             Create crawl objects for each file_name in session list.
-            :param session_list: list of sessions to create crawl objects
+            :param sesh_list: list of sessions to create crawl objects
             :return: A list of crawl objects
             """
-            return [Crawl.from_save(session) for session in session_list]
+            return [Crawl.from_save(session) for session in sesh_list]
+
+        def get_session_list():
+            """
+            Get a list of sessions that the user wishes to resume.
+            :return: A list of session names
+            """
+            session_list = []
+            printed_files_list = get_saved_sessions()
+            while True:
+                if not printed_files_list:
+                    # if the user enters in all of the saved sessions
+                    print(
+                        'You have added all of the session saves to your resume list, press [ENTER] to initiate crawls.')
+                    input(': ')
+                    break
+                print_saved_sessions(printed_files_list)
+                print_sesh_list(session_list)
+                session_name = input(': ')
+                if session_name in printed_files_list:
+                    session_list.append(session_name)
+                    printed_files_list.remove(session_name)
+                elif session_name in session_list:
+                    print(f'{session_name} already in resume session list')
+                elif session_name == 'q':
+                    break
+                else:
+                    print(f'Session not found: {session_name}')
+            if not session_list:
+                return None
+            else:
+                return session_list
 
         print('|Enter the sessions you wish to resume|Enter [Q] to initiate crawl sessions')
 
-        # todo: create a code block that asks the user which sessions they would like to resume and
-        #  resume the sessions using multiprocessing
-        session_list = []
-        printed_files_list = get_saved_sessions()
-        while True:
-            if not printed_files_list:
-                print('You have added all of the session saves to your resume list, press [ENTER] to initiate crawls.')
-                input(': ')
-                break
-            print_saved_sessions(printed_files_list)
-            print_sesh_list(session_list)
-            session_name = input(': ')
-            if session_name in printed_files_list:
-                session_list.append(session_name)
-                # print(f'{session_name} added to resume session list')
-                printed_files_list.remove(session_name)
-            elif session_name in session_list:
-                print(f'{session_name} already in resume session list')
-            elif session_name == 'q':
-                break
-            else:
-                print(f'Session not found: {session_name}')
+        # get a list of session the user wishes to resume
+        session_list = get_session_list()
+
+        # if the user didn't add any session names to the Resume Session List
         if not session_list:
-            return print('Session names were not added to the Resume Session List')
+            return print('Sessions not added to Resume Session List')
 
         # create a list of crawl objects
-        crawl_objects = create_crawl_objects(session_list)
+        session_objects = create_crawl_objects(session_list)
 
         # if the user wishes to resume crawl of one list, don't use multiprocessing
-        if len(session_list) < 2:
-            crawl_object = crawl_objects[0]
-            outputs = crawl_object.crawl()
+        if len(session_list) == 1:
+            crawl_object = session_objects[0]
+            outputs = resume_crawl(crawl_object)
             return print(outputs)
 
-        # multiprocess crawl threads
-        list_count = len(crawl_objects)
-        thread_count = multiprocessing.cpu_count() * 2
-        # create a pool size the size of the list, if the list is larger than the machines thread count, use max threads
-        if list_count > thread_count:
-            pool_size = thread_count
-        else:
-            pool_size = list_count
-
-        print(pool_size)
-        print(session_list)
-        # initiate multiprocessing pool
-        pool = multiprocessing.Pool(
-            processes=pool_size
-        )
-        pool_outputs = pool.map(resume_crawl, crawl_objects)  # todo: create a function with the parameters of initial function and the iterable of args
-        pool.close()
-        pool.join()
-        print(pool_outputs)
+        multiprocess(resume_crawl, session_objects)
 
     print('Welcome to Scraper!')
     try:
