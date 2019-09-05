@@ -184,9 +184,12 @@ class Crawl:
         # Get current new_urls and set response to the HTML received
         url = self.current_url
         try:
-            # TODO: Look into adding headers and proxies.
-            #  Maybe a method to turn proxies on or off, default off
-            response = requests.get(url, timeout=10)
+            headers = {
+                'User-Agent': ('Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                               'AppleWebKit/537.36 (KHTML, like Gecko)'
+                               'Chrome/76.0.3809.100 Safari/537.36')
+            }
+            response = requests.get(url, headers=headers, timeout=7)
             status_code = response.status_code
 
             if status_code != 200:
@@ -384,5 +387,4 @@ class Crawl:
         """
         os.system('clear')
 
-    # TODO: Make a class method that writes the results to a json dictionary
-    # TODO: Write a method that will print out the stats
+    # TODO: Make a class method that writes the results to a text file
