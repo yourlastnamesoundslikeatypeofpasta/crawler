@@ -326,22 +326,35 @@ class Crawl:
             self.print_buggy_links()
         return {'session_name': self.session_name, 'url_counter': self.url_counter, 'debug_dict': self.debug_dict}
 
-    @classmethod
-    def from_save(cls, name_session):
+    @staticmethod
+    def from_save(name_session):
         with shelve.open(f'./save/{name_session}.db', flag="r") as save:
             save_dict = save['main']
             new_urls = save_dict.get('new_urls')
-            cls.session_name = save_dict['session_name']
-            cls.response = save_dict.get('response')
-            cls.current_url = save_dict.get('current_url')
-            cls.poss_link = save_dict.get('poss_link')
-            cls.url_counter = save_dict.get('url_counter')
-            cls.queue_counter = save_dict.get('queue_counter')
-            cls.url_cap = save_dict.get('url_cap')
-            cls.sleep_time = save_dict.get('sleep_time')
-            cls.debug_dict = save_dict.get('debug_dict')
-            cls.buggy_url_list = save_dict.get('buggy_url_list')
-            return cls(new_urls)
+            session_name = save_dict['session_name']
+            response = save_dict.get('response')
+            current_url = save_dict.get('current_url')
+            poss_link = save_dict.get('poss_link')
+            url_counter = save_dict.get('url_counter')
+            queue_counter = save_dict.get('queue_counter')
+            url_cap = save_dict.get('url_cap')
+            sleep_time = save_dict.get('sleep_time')
+            debug_dict = save_dict.get('debug_dict')
+            buggy_url_list = save_dict.get('buggy_url_list')
+
+            # create crawl object to return
+            url = Crawl(new_urls)
+            url.session_name = session_name
+            url.response = response
+            url.current_url = current_url
+            url.poss_link = poss_link
+            url.url_counter = url_counter
+            url.queue_counter = queue_counter
+            url.url_cap = url_cap
+            url.sleep_time = sleep_time
+            url.debug_dict = debug_dict
+            url.buggy_url_list = buggy_url_list
+            return url
 
     @classmethod
     def print_buggy_links(cls):
