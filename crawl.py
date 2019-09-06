@@ -273,7 +273,7 @@ class Crawl:
         and buggy_url_list with shelve.
         :return: None
         """
-        with shelve.open(f'./save/{self.session_name}.db') as save:
+        with shelve.open(f'./save/crawl/{self.session_name}.db') as save:
             save['main'] = {
                 'session_name': self.session_name,
                 'new_urls': self.new_urls,
@@ -324,7 +324,7 @@ class Crawl:
 
     @staticmethod
     def from_save(name_session):
-        with shelve.open(f'./save/{name_session}.db', flag="r") as save:
+        with shelve.open(f'./save/crawl/{name_session}.db', flag="r") as save:
             save_dict = save['main']
             new_urls = save_dict.get('new_urls')
             session_name = save_dict['session_name']
