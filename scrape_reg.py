@@ -10,6 +10,7 @@ from tkinter import filedialog
 from bs4 import BeautifulSoup
 
 from base_url import base_url
+from get_website_name import get_web_name
 from crawl import Crawl
 
 
@@ -19,15 +20,17 @@ class ScrapeReg(Crawl):
     """
     result_dict = {}
 
-    def __init__(self, session_name, new_urls, regex):
-        if isinstance(new_urls, str):
-            new_urls = [new_urls.strip().lower()]
-        super().__init__(session_name, new_urls)
+    def __init__(self, new_urls, regex):
+        super().__init__(new_urls)
+
+        self.session_name = get_web_name(new_urls)
         self.regex = regex
 
         # Create a default dictionary entry for each web domain in result_dict
-        for link in new_urls:
-            self.result_dict.setdefault(base_url(link), [])
+        if isinstance(new_urls, str):
+            new_urls = [new_urls]
+            for link in new_urls:
+                self.result_dict.setdefault(base_url(link), [])
 
     def get_result_with_html_parser(self):
         """
@@ -115,24 +118,38 @@ class ScrapeReg(Crawl):
                 'buggy_url_list': self.buggy_url_list,
             }
 
-    @classmethod
-    def from_save(cls, name_session):
+    @staticmethod
+    def from_save(name_session):
         with shelve.open(f'./save/{name_session}.db', flag="r") as save:
             save_dict = save['main']
             session_name = save_dict['session_name']
             new_urls = save_dict.get('new_urls')
             regex = save_dict.get('regex')  # regex added to .from_save
-            cls.result_dict = save_dict['result_dict']  # result_dict added to .from_save
-            cls.response = save_dict.get('response')
-            cls.current_url = save_dict.get('current_url')
-            cls.poss_link = save_dict.get('poss_link')
-            cls.url_counter = save_dict.get('url_counter')
-            cls.queue_counter = save_dict.get('queue_counter')
-            cls.url_cap = save_dict.get('url_cap')
-            cls.sleep_time = save_dict.get('sleep_time')
-            cls.debug_dict = save_dict.get('debug_dict')
-            cls.buggy_url_list = save_dict.get('buggy_url_list')
-            return cls(session_name, new_urls, regex)
+            result_dict = save_dict['result_dict']  # result_dict added to .from_save
+            response = save_dict.get('response')
+            current_url = save_dict.get('current_url')
+            poss_link = save_dict.get('poss_link')
+            url_counter = save_dict.get('url_counter')
+            queue_counter = save_dict.get('queue_counter')
+            url_cap = save_dict.get('url_cap')
+            sleep_time = save_dict.get('sleep_time')
+            debug_dict = save_dict.get('debug_dict')
+            buggy_url_list = save_dict.get('buggy_url_list')
+
+            # create a ScrapeReg object
+            url = ScrapeReg(new_urls, regex)
+            url.session_name = session_name
+            url.result_dict = result_dict
+            url.response = response
+            url.current_url = current_url
+            url.poss_link = poss_link
+            url.url_counter = url_counter
+            url.queue_counter = queue_counter
+            url.url_cap = url_cap
+            url.sleep_time = sleep_time
+            url.debug_dict = debug_dict
+            url.buggy_url_list = buggy_url_list
+            return url
 
     @classmethod
     def print_results(cls):
@@ -193,27 +210,40 @@ class ScrapeReg(Crawl):
             else:
                 print('No Results to save!')
 
-    def scrape_reg(self):
-        # begin scraping
+    def crawl(self):
+
+        def get_result_count():
+            """
+            Get the number of results found.
+            :return: an integer of the number of results found.
+            """
+            results = [i for i in self.result_dict.values() if i]
+            result_count = 0
+            if results:
+                for result_list in self.result_dict.values():
+                    if result_list:
+                        for result in result_list:
+                            result_count += 1
+                return result_count
+            else:
+                return 0
+
+        # begin crawl
+        session = self.session_name
         try:
             while len(self.new_urls):
-                print(f'Session - {self.session_name}')
-                status = 'crawling...'
-                print(f'Crawl Status - {status}')
-                print(f'Crawls Completed {self.get_total_urls_scraped()}')
-                print(f'Crawl Queue: {len(self.new_urls)}')
-                self.print_results()
-                self.print_buggy_links()
                 self.set_current_url()
-                print(f'Processing: {self.current_url}', file=sys.stderr)
+                queue = len(self.new_urls)
+                processing = self.current_url
+                result_count = get_result_count()
+                status = 'crawling'
+                print(f'|Session:{session}|Status:{status}|Queue:{queue}|Results:{result_count}|Processing:{processing}', end='\r')
                 self.set_response_with_html()
                 if self.response:
                     self.get_result_from_response()
                     self.get_new_urls_from_html()
                     time.sleep(self.sleep_time)
                 self.save_progress()
-                self.clear()
-                time.sleep(.1)
 
             # crawl complete
             self.save_progress()
