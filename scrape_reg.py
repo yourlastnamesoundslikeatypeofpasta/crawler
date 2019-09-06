@@ -73,7 +73,11 @@ class ScrapeReg(Crawl):
                                                self.response, re.I)))
 
         if new_results_list:
-            new_results_list = [i.lower() for i in new_results_list]
+            try:
+                new_results_list = [i.lower() for i in new_results_list]
+            except AttributeError as e:
+                print(f'AttributeError: {e}')
+                sys.exit()
             self.add_result(new_results_list)
         else:
             new_results_list = self.get_result_with_html_parser()
@@ -101,7 +105,7 @@ class ScrapeReg(Crawl):
                 and buggy_url_list with shelve.
                 :return: None
                 """
-        with shelve.open(f'./save/{self.session_name}.db') as save:
+        with shelve.open(f'./save/scrape_reg/{self.session_name}.db') as save:
             save['main'] = {
                 'session_name': self.session_name,
                 'new_urls': self.new_urls,
@@ -120,7 +124,7 @@ class ScrapeReg(Crawl):
 
     @staticmethod
     def from_save(name_session):
-        with shelve.open(f'./save/{name_session}.db', flag="r") as save:
+        with shelve.open(f'./save/scrape_reg/{name_session}.db', flag="r") as save:
             save_dict = save['main']
             session_name = save_dict['session_name']
             new_urls = save_dict.get('new_urls')
@@ -237,7 +241,8 @@ class ScrapeReg(Crawl):
                 processing = self.current_url
                 result_count = get_result_count()
                 status = 'crawling'
-                print(f'|Session:{session}|Status:{status}|Queue:{queue}|Results:{result_count}|Processing:{processing}', end='\r')
+                # print(f'|Session:{session}|Status:{status}|Queue:{queue}|Results:{result_count}|Processing:{processing}', end='\r') not printing with end
+                print(f'|Session:{session}|Status:{status}|Queue:{queue}|Results:{result_count}|Processing:{processing}')
                 self.set_response_with_html()
                 if self.response:
                     self.get_result_from_response()
