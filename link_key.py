@@ -3,6 +3,10 @@ import os
 import re
 import sys
 import time
+import tkinter
+from tkinter import filedialog
+
+import openpyxl
 
 from bs4 import BeautifulSoup
 
@@ -37,3 +41,39 @@ class LinkKey(ScrapeReg):
         result_from_rslt_dict = self.result_dict[self.get_current_base_url()]
         if result not in result_from_rslt_dict:
             result_from_rslt_dict.append(result)
+
+    @staticmethod
+    def import_urls_from_excel():
+
+        def get_file_path():
+            """
+            Open a file dialog window and ask the user where they would like to
+            save their results
+            :return: a string of the absolute file path
+            """
+            # Set up the tkinter object
+            root = tkinter.Tk()
+            root.withdraw()
+
+            # Bring up the dialog window
+            curr_path = os.getcwd()
+            txt_path = filedialog.askopenfilename(parent=root, initialdir=curr_path,
+                                                  title='Choose the excel sheet you want to import')
+            return txt_path  #todo: test me on lunix box, getting weird error on mac box
+
+        # path = '/Users/ChristianZagazeta/Downloads/florida_cities_a_c_2007_2012.xlsx'
+        path = get_file_path()
+        wb = openpyxl.load_workbook(path)
+        try:
+            sheet = wb.active
+            column_3_rows = len(sheet['E'])
+            websites = []
+            for row in range(1, column_3_rows):
+                cell = sheet.cell(row=row, column=5).value
+                if isinstance(cell, str):
+                    if cell.startswith('http') or cell.startswith('www'):
+                        websites.append(cell)
+            return websites
+        except BaseException as e:
+            print(f'Error:{e}')
+            wb.close()
