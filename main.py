@@ -1,6 +1,8 @@
 import os
 import multiprocessing
 from crawl import Crawl
+from scrape_reg import ScrapeReg
+from link_key import LinkKey
 
 
 def initiate_crawl(url):
@@ -17,7 +19,43 @@ def resume_crawl(crawl_object):
     return crawl_object.crawl()
 
 
+def initiate_scrape_reg(iterable):
+    url_list = iterable[0]
+    regex = iterable[-1]
+    return ScrapeReg(url_list, regex).crawl()
+
+
+def resume_scrape_reg(scrape_reg_object):
+    pass
+
+
+def initiate_link_key(iterable):
+    url_list = iterable[0]
+    regex = iterable[-1]
+    return LinkKey(url_list, regex).crawl()
+
+
+def resume_link_key(url):
+    pass
+
+
 def main():
+
+    def get_session_type():
+        sesh_types = ['Scrape - Get Info <i>', 'Scrape - Get Links <l>']
+        print('What type of session would you like to initiate?')
+        print(f'\tTypes:')
+        for sesh in sesh_types:
+            print(f'\t\t{sesh}')
+
+        while True:
+            type_resp = input(': ').lower()
+            if 'i' in type_resp:
+                return ScrapeReg
+            elif 'l' in type_resp:
+                return LinkKey
+            else:
+                print('InvalidInput: Enter <i> or <l>')
 
     def multiprocess(func, iterable):
         """
@@ -75,18 +113,55 @@ def main():
             else:
                 return [links]
 
+        def create_scrape_reg():
+            """
+            Initiate scrape_reg
+            :return: Output of scrape_reg.crawl()
+            """
+            url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
+            url_list = list_or_string(url)
+            regex = input('Enter the Regular Expression of the info you would like to extract\n: ').lower()
+            url_regex_tup = [(url, regex) for url in url_list]
+
+            if len(url_list) == 1:
+                return ScrapeReg(url, regex).crawl()
+            return multiprocess(initiate_scrape_reg, url_regex_tup)
+
+        def create_link_key():
+            """
+            Initiate link_key
+            :return: Output of link_key.crawl()
+            """
+            url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
+            url_list = list_or_string(url)
+            regex = input('Enter the Regular Expression of the info you would like to extract\n: ').lower()
+            url_regex_tup = [(url, regex) for url in url_list]
+
+            if len(url_list) == 1:
+                return LinkKey(url, regex).crawl()
+            return multiprocess(initiate_link_key, url_regex_tup)
+
+        sesh_type = get_session_type()
+
+        if sesh_type == ScrapeReg:
+            create_scrape_reg()
+        elif sesh_type == LinkKey:
+            create_link_key()
+
         # ask the user if they're submitting one new_urls or a list of urls
-        url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
-        url_list = list_or_string(url)
-
-        # if the user wishes to scrape one url, don't use multiprocessing
-        if len(url_list) == 1:
-            url = url_list[0]
-            output = initiate_crawl(url)
-            return output
-
-        # initiate multiprocessing
-        multiprocess(initiate_crawl, url_list)
+        # url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
+        # url_list = list_or_string(url)
+        #
+        # # if the user wishes to scrape one url, don't use multiprocessing
+        # if len(url_list) == 1:
+        #     url = url_list[0]
+        #     output = initiate_crawl(url)
+        #     return output
+        #
+        # # initiate multiprocessing
+        # if isinstance(sesh_type, ScrapeReg):
+        #     multiprocess(initiate_scrape_reg, url_list)
+        # multiprocess(initiate_crawl, url_list)
 
     def resume_sesh():
         """
@@ -174,6 +249,8 @@ def main():
                 return None
             else:
                 return session_list
+
+        sesh_type = get_session_type()
 
         print('|Enter the sessions you wish to resume|Enter [Q] to initiate crawl sessions')
 
