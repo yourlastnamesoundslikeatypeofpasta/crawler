@@ -303,13 +303,6 @@ class Crawl:
                 processing = self.current_url
                 status = 'crawling'
                 print(f'|Session:{session}|Status:{status}|Queue:{queue}|Processing:{processing}')
-                # print(f'Session - {self.session_name}')
-                # status = 'crawling...'
-                # print(f'Crawl Status - {status}')
-                # print(f'Crawls Completed: {self.get_total_urls_scraped()}')
-                # print(f'Crawl Queue: {len(self.new_urls)}')
-                # self.print_buggy_links()
-                # print(f'Processing: {self.current_url}', file=sys.stderr)
                 self.set_response_with_html()
                 if self.response:
                     self.get_new_urls_from_html()
@@ -345,7 +338,7 @@ class Crawl:
             debug_dict = save_dict.get('debug_dict')
             buggy_url_list = save_dict.get('buggy_url_list')
 
-            # create crawl object to return
+            # create Crawl object to return
             url = Crawl(new_urls)
             url.session_name = session_name
             url.response = response
