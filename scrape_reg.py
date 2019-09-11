@@ -22,8 +22,8 @@ class ScrapeReg(Crawl):
 
     def __init__(self, new_urls, regex):
         super().__init__(new_urls)
-
-        self.session_name = get_web_name(new_urls)
+        if isinstance(new_urls, str):
+            self.session_name = get_web_name(new_urls)
         self.regex = regex
 
         # Create a default dictionary entry for each web domain in result_dict
@@ -258,6 +258,8 @@ class ScrapeReg(Crawl):
             print(f'Crawls Completed: {self.get_total_urls_scraped()}')
             self.print_results()
             self.print_buggy_links()
+            result_list = list(self.result_dict.values())
+            return self.session_name, result_list
         except KeyboardInterrupt:
             self.print_results()
             self.print_buggy_links()
