@@ -1,8 +1,9 @@
-import os
 import multiprocessing
+import os
+
 from crawl import Crawl
-from scrape_reg import ScrapeReg
 from link_key import LinkKey
+from scrape_reg import ScrapeReg
 
 
 def initiate_crawl(url):
@@ -32,7 +33,8 @@ def resume_scrape_reg(scrape_reg_object):
 def initiate_link_key(iterable):
     url_list = iterable[0]
     regex = iterable[-1]
-    return LinkKey(url_list, regex).crawl()
+    result_tup = LinkKey(url_list, regex).crawl()
+    return result_tup
 
 
 def resume_link_key(url):
@@ -83,6 +85,20 @@ def main():
                 pool_size = list_count
             return pool_size
 
+        def print_pool_out(output_list):
+            """
+            Print the output of each crawl process from the output list
+            :param output_list: a list that contains tuples (session_name, list_of_results)
+            :return: None
+            """
+            for session_name, result_list in output_list:
+                print(session_name)
+                if result_list:
+                    for link in result_list:
+                        print(f'\t{link}')
+                else:
+                    print(f'\tNo Results Found')
+
         pool_size = create_pool_size(iterable)
         pool = multiprocessing.Pool(
             processes=pool_size
@@ -91,7 +107,8 @@ def main():
         pool.close()
         pool.join()
 
-        return print(pool_outputs)
+        print(pool_outputs)
+        print_pool_out(pool_outputs)
 
     def new_sesh():
         """
@@ -111,7 +128,7 @@ def main():
                 links = [i.strip() for i in links]
                 return links
             else:
-                return [links]
+                return [links.rstrip()]
 
         def create_scrape_reg():
             """
@@ -134,11 +151,12 @@ def main():
             """
             url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
             url_list = list_or_string(url)
+            # todo: turn url_list into a set list, just in case the same url is added into the input list twice
             regex = input('Enter the Regular Expression of the info you would like to extract\n: ').lower()
             url_regex_tup = [(url, regex) for url in url_list]
 
             if len(url_list) == 1:
-                return LinkKey(url, regex).crawl()
+                return LinkKey(url.rstrip(), regex).crawl()
             return multiprocess(initiate_link_key, url_regex_tup)
 
         sesh_type = get_session_type()
@@ -147,21 +165,6 @@ def main():
             create_scrape_reg()
         elif sesh_type == LinkKey:
             create_link_key()
-
-        # ask the user if they're submitting one new_urls or a list of urls
-        # url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
-        # url_list = list_or_string(url)
-        #
-        # # if the user wishes to scrape one url, don't use multiprocessing
-        # if len(url_list) == 1:
-        #     url = url_list[0]
-        #     output = initiate_crawl(url)
-        #     return output
-        #
-        # # initiate multiprocessing
-        # if isinstance(sesh_type, ScrapeReg):
-        #     multiprocess(initiate_scrape_reg, url_list)
-        # multiprocess(initiate_crawl, url_list)
 
     def resume_sesh():
         """
@@ -273,10 +276,16 @@ def main():
         multiprocess(resume_crawl, session_objects)
 
     print('Welcome to Scraper!')
+
+    # create the save directory if it doesn't exist
+    path = './save/'
+    if not os.path.exists(path):
+        os.mkdir(path)
+
     try:
         while True:
             print('[NEW SESSION] or [RESUME SESSION] or [QUIT] [N/R/Q]')
-            sesh_response = input(': ').lower()  # todo: introduce session types
+            sesh_response = input(': ').lower()
             if 'n' in sesh_response:
                 new_sesh()
             elif 'r' in sesh_response:
@@ -292,4 +301,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
