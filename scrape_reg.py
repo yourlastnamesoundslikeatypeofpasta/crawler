@@ -29,8 +29,9 @@ class ScrapeReg(Crawl):
         # Create a default dictionary entry for each web domain in result_dict
         if isinstance(new_urls, str):
             new_urls = [new_urls]
-            for link in new_urls:
-                self.result_dict.setdefault(base_url(link), [])
+        for link in new_urls:
+            print('blag', self.session_name, link, new_urls)
+            self.result_dict.setdefault(base_url(link), [])
 
     def get_result_with_html_parser(self):
         """
@@ -104,8 +105,15 @@ class ScrapeReg(Crawl):
                 url_counter, queue_counter, url_cap, sleep_time, debug_dict,
                 and buggy_url_list with shelve.
                 :return: None
-                """
-        with shelve.open(f'./save/scrape_reg/{self.session_name}.db') as save:
+        """
+        # verify that the directory: ./save/scrape_reg exists, create it, if not
+        path = './save/scrape_reg/'
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        # save the progress
+        shelve_file = f'{path}{self.session_name}.db'
+        with shelve.open(shelve_file) as save:
             save['main'] = {
                 'session_name': self.session_name,
                 'new_urls': self.new_urls,
@@ -258,7 +266,8 @@ class ScrapeReg(Crawl):
             print(f'Crawls Completed: {self.get_total_urls_scraped()}')
             self.print_results()
             self.print_buggy_links()
-            result_list = list(self.result_dict.values())
+            result_list = list(self.result_dict.values())[0]
+            print('Output', self.session_name, result_list)
             return self.session_name, result_list
         except KeyboardInterrupt:
             self.print_results()
