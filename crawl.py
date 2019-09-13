@@ -29,6 +29,7 @@ class Crawl:
 
     # Default max number of links to add to the new_urls list
     url_cap = 1500
+    # url_cap = 50
 
     # Default sleep time (in seconds) between each crawl
     sleep_time = 0
@@ -61,11 +62,8 @@ class Crawl:
         self.poss_link = None
 
         # Create a default dictionary entries
-        if isinstance(new_urls, str):
-            new_urls = [new_urls]
-        for link in new_urls:
-            self.url_counter.setdefault(base_url(link), 0)
-            self.queue_counter.setdefault(base_url(link), 0)
+        self.url_counter.setdefault(self.session_name, 0)
+        self.queue_counter.setdefault(self.session_name, 0)
 
     def get_current_base_url(self):
         """
@@ -82,65 +80,71 @@ class Crawl:
         """
         # get new new_urls links from html and add them to the new urls deque()
         soup = BeautifulSoup(self.response, features='html.parser')
+        if soup:
+            # Go through every link in html and add it to list
+            for anchor in soup.find_all('a'):
 
-        # Go through every link in html and add it to list
-        for anchor in soup.find_all('a'):
+                # check if base new_urls is capped
+                try:
+                    if self.queue_counter.get(self.session_name) >= self.url_cap:  # FIXME: fix this by changing all get_current_base_url methods to self.session_name
+                        # url_base = self.get_current_base_url()
+                        # url_base_count = self.queue_counter[self.get_current_base_url()]
+                        break
+                except TypeError:
+                    print(f'TypeError: Line 91 did not work, Session Name: {self.session_name}, Current Url: {self.current_url}, Possible Link: {self.poss_link}')
 
-            # check if base new_urls is capped
-            if self.queue_counter.get(self.get_current_base_url()) >= self.url_cap:
-                url_base = self.get_current_base_url()
-                url_base_count = self.queue_counter[self.get_current_base_url()]
-                # print(f'Queue Capped: {url_base}: {url_base_count}')
-                break
+                try:
+                    if 'href' in anchor.attrs or anchor.attrs['href'].find('mailto') == -1:
+                        link = anchor.attrs['href']
 
-            try:
-                if 'href' in anchor.attrs or anchor.attrs['href'].find('mailto') == -1:
-                    link = anchor.attrs['href']
+                        # Occasionally anchor.attrs['href'] == None
+                        if link is not None:
+                            self.poss_link = link
+                except KeyError:
+                    """The tags that cause KeyErrors are typically in this fashion
+                      KeyError: Anchor: <a name="1412"></a>"""
+                    continue
 
-                    # Occasionally anchor.attrs['href'] == None
-                    if link is not None:
-                        self.poss_link = link
-            except KeyError:
-                """The tags that cause KeyErrors are typically in this fashion
-                  KeyError: Anchor: <a name="1412"></a>"""
-                continue
+                # Resolve relative links
+                try:
+                    if ('/' in self.poss_link) or ('..' in self.poss_link) or ('./' in self.poss_link) or \
+                            (self.session_name not in self.poss_link):
+                        # ex. /catalog/books/index.html
+                        self.poss_link = urljoin(self.current_url, self.poss_link)
+                    # elif '..' in self.poss_link:
+                    #     # ex. '../folder/page.html'
+                    #     self.poss_link = urljoin(self.current_url, self.poss_link)
+                    # elif self.poss_link.startswith('..'):
+                    #     # ex. ../../page-1.html
+                    #     # self.poss_link = find_abs_path(self.current_url, self.poss_link)
+                    #     self.poss_link = urljoin(self.current_url, self.poss_link)
+                    # elif self.poss_link[0] in string.ascii_letters and '/' in self.poss_link:
+                    #     # ex. content/media/index.html
+                    #     self.poss_link = urljoin(self.current_url, self.poss_link)
+                except IndexError as err:
+                    # print(f'Error: {err}', file=sys.stderr)
+                    # print(f'poss link: {self.poss_link}', file=sys.stderr)
+                    # print(f'Anchor: {anchor}', file=sys.stderr)
+                    continue
 
-            # Resolve relative links
-            try:
-                if self.poss_link.startswith('/'):
-                    # ex. /catalog/books/index.html
-                    self.poss_link = urljoin(self.current_url, self.poss_link)
-                elif self.poss_link[0] in string.ascii_letters and '/' not in self.poss_link:
-                    # ex. page-1.html
-                    self.poss_link = urljoin(self.current_url, self.poss_link)
-                elif self.poss_link.startswith('..'):
-                    # ex. ../../page-1.html
-                    # self.poss_link = find_abs_path(self.current_url, self.poss_link)
-                    self.poss_link = urljoin(self.current_url, self.poss_link)
-                elif self.poss_link[0] in string.ascii_letters and '/' in self.poss_link:
-                    # ex. content/media/index.html
-                    self.poss_link = urljoin(self.current_url, self.poss_link)
-            except IndexError as err:
-                print(f'Error: {err}', file=sys.stderr)
-                print(f'poss link: {self.poss_link}', file=sys.stderr)
-                print(f'Anchor: {anchor}', file=sys.stderr)
-                continue
+                # lower poss_link to avoid duplicate links with different casing
+                # self.poss_link = self.poss_link.lower()
 
-            # lower poss_link to avoid duplicate links with different casing
-            self.poss_link = self.poss_link.lower()
+                # Add the new_urls to the new_urls and print out that a link was added
+                if self.is_poss_link_a_link():
 
-            # Add the new_urls to the new_urls and print out that a link was added
-            if self.is_poss_link_a_link():
+                    # Create an entry in the debug dictionary
+                    self.debug_dict.setdefault(self.current_url, [self.poss_link])
+                    if self.poss_link not in self.debug_dict[self.current_url]:
+                        self.debug_dict[self.current_url].append(self.poss_link)
 
-                # Create an entry in the debug dictionary
-                self.debug_dict.setdefault(self.current_url, [self.poss_link])
-                if self.poss_link not in self.debug_dict[self.current_url]:
-                    self.debug_dict[self.current_url].append(self.poss_link)
-
-                # add the link to new_urls
-                self.add_to_new_urls(self.poss_link)
-                # print(f'New URL Added: {self.poss_link}')
-                self.add_queue_counter()
+                    # add the link to new_urls
+                    self.add_to_new_urls(self.poss_link)
+                    # print(f'New URL Added: {self.poss_link}')
+                    try:  # fixme: fix this key error
+                        self.add_queue_counter()
+                    except KeyError:
+                        print(f'KeyError: Line 148 did not work, Session Name: {self.session_name}, Current Url: {self.current_url}, Possible Link: {self.poss_link}')
 
     def get_total_urls_scraped(self):
         """
@@ -189,21 +193,50 @@ class Crawl:
                                'AppleWebKit/537.36 (KHTML, like Gecko)'
                                'Chrome/76.0.3809.100 Safari/537.36')
             }
-            response = requests.get(url, headers=headers, timeout=7)
+            response = requests.get(url, headers=headers, timeout=5)
+            # todo: add a way to check the content type and content length and then filter from with this function
             status_code = response.status_code
 
-            if status_code != 200:
-                # Add the current new_urls and new link to the the debug dictionary and print out the status code
-                print(f'Status Code Error: {self.current_url}: {status_code}', file=sys.stderr)
+            # Don't set response if the content is above a certain size in bytes
+            if len(response.content) >= 20_000_000:
                 self.buggy_url_list.append(self.current_url)
                 self.response = None
-            else:
+            elif response.history and status_code in range(200, 226):
+                # if the response was redirected to a new url and 200 status code
+                self.current_url = response.url
                 self.response = response.text
                 self.add_url_counter()
+            elif status_code in range(200, 226):
+                # if the response has a successful status code
+                try:
+                    self.response = response.text
+                    self.add_url_counter()
+                except KeyError:
+                    self.buggy_url_list.append(self.current_url)
+                    self.response = None
+            elif status_code in range(300, 511):
+                # if the response was redirected, or had a client or server error
+                self.buggy_url_list.append(self.current_url)
+                self.response = None
+
+            # if status_code != 200:
+            #     # Add the current new_urls and new link to the the debug dictionary and print out the status code
+            #     # print(f'Status Code Error: {self.current_url}: {status_code}', file=sys.stderr)
+            #     self.buggy_url_list.append(self.current_url)
+            #     self.response = None
+            # else:
+            #     try:
+            #         self.response = response.text
+            #         self.add_url_counter()
+            #     except KeyError:
+            #         self.buggy_url_list.append(self.current_url)
+            #         self.response = None
         except (requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema,
                 requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                 requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
-            print(f'Link Error: {e}')
+            # print(f'Link Error: {e}')
+            self.response = None
+            # pass
 
     def add_to_new_urls(self, url):
         """
@@ -220,21 +253,26 @@ class Crawl:
         :return: None
         """
         # increment the new_urls counter in url_counter by 1
-        self.url_counter[self.get_current_base_url()] += 1
+        # self.url_counter[self.get_current_base_url()] += 1
+
+        try:
+            self.url_counter[self.session_name] += 1
+        except KeyError:
+            print('freagin BUGGY CODE:', self.current_url, self.poss_link, self.session_name)
 
     def add_queue_counter(self):
         """
         Increment the url_base in queue_counter by one.
         :return: None
         """
-        self.queue_counter[self.get_current_base_url()] += 1
+        self.queue_counter[self.session_name] += 1
 
     def is_url_capped(self):
         """
         Check if the new_urls is capped at the currently set url_cap.
         :return: True if the new_urls is capped, False if it isn't
         """
-        if self.url_counter.get(self.get_current_base_url()) >= self.url_cap:
+        if self.url_counter.get(self.session_name) >= self.url_cap:
             return True
         return False
 
@@ -259,7 +297,7 @@ class Crawl:
         if self.poss_link in self.new_urls:
             # link is already in new urls
             return False
-        if self.get_current_base_url() not in self.poss_link:
+        if self.session_name not in self.poss_link:
             # Base new_urls is not in the link, ex. 'http://instagram.com/company_profile
             return False
         if 'mailto:' in self.poss_link:
@@ -273,14 +311,7 @@ class Crawl:
         and buggy_url_list with shelve.
         :return: None
         """
-        # verify that the directory: ./save/crawl exists, create it, if not
-        path = './save/crawl/'
-        if not os.path.exists(path):
-            os.mkdir(path)
-
-        # save the progress
-        shelve_file = f'{path}{self.session_name}.db'
-        with shelve.open(shelve_file) as save:
+        with shelve.open(f'./save/crawl/{self.session_name}.db') as save:
             save['main'] = {
                 'session_name': self.session_name,
                 'new_urls': self.new_urls,
