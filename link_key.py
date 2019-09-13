@@ -49,8 +49,15 @@ class LinkKey(ScrapeReg):
                 url_counter, queue_counter, url_cap, sleep_time, debug_dict,
                 and buggy_url_list with shelve.
                 :return: None
-                """
-        with shelve.open(f'./save/link_key/{self.session_name}.db') as save:
+        """
+        # verify that the directory: ./save/link_key exists, create it, if not
+        path = './save/link_key/'
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        # save the progress
+        shelve_file = f'{path}{self.session_name}.db'
+        with shelve.open(shelve_file) as save:
             save['main'] = {
                 'session_name': self.session_name,
                 'new_urls': self.new_urls,
