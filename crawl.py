@@ -6,6 +6,7 @@ import sys
 import time
 from collections import deque
 from urllib.parse import urljoin
+from sys import stdout
 from random import randint
 
 import requests
@@ -17,6 +18,8 @@ from get_website_name import get_web_name
 
 class Crawl:
     """A class the crawls and scrapes a given new_urls"""
+
+    # todo: sum up these class variables into one large dict
 
     # Dictionary that stores the number of times a base_url has been processed {'base_url': 21}
     url_counter = {}
@@ -45,6 +48,10 @@ class Crawl:
         if isinstance(new_urls, str):
             self.session_name = get_web_name(new_urls)
 
+            # Create a default dictionary entries
+            self.url_counter.setdefault(self.session_name, 0)
+            self.queue_counter.setdefault(self.session_name, 0)
+
         # Create a deque from the new_urls list
         if not isinstance(new_urls, deque):
             # create a deque if not loading from a save
@@ -61,10 +68,6 @@ class Crawl:
         # A possible link that may have been found from the HTML
         self.poss_link = None
 
-        # Create a default dictionary entries
-        self.url_counter.setdefault(self.session_name, 0)
-        self.queue_counter.setdefault(self.session_name, 0)
-
     def get_current_base_url(self):
         """
         Get the current base new_urls.
@@ -79,16 +82,18 @@ class Crawl:
         :return: None
         """
         # get new new_urls links from html and add them to the new urls deque()
-        soup = BeautifulSoup(self.response, features='html.parser')
+        try:
+            soup = BeautifulSoup(self.response, features='html.parser')
+        except TypeError:
+            return
+
         if soup:
             # Go through every link in html and add it to list
             for anchor in soup.find_all('a'):
 
                 # check if base new_urls is capped
                 try:
-                    if self.queue_counter.get(self.session_name) >= self.url_cap:  # FIXME: fix this by changing all get_current_base_url methods to self.session_name
-                        # url_base = self.get_current_base_url()
-                        # url_base_count = self.queue_counter[self.get_current_base_url()]
+                    if self.queue_counter.get(self.session_name) >= self.url_cap:
                         break
                 except TypeError:
                     print(f'TypeError: Line 91 did not work, Session Name: {self.session_name}, Current Url: {self.current_url}, Possible Link: {self.poss_link}')
@@ -98,7 +103,7 @@ class Crawl:
                         link = anchor.attrs['href']
 
                         # Occasionally anchor.attrs['href'] == None
-                        if link is not None:
+                        if link:
                             self.poss_link = link
                 except KeyError:
                     """The tags that cause KeyErrors are typically in this fashion
@@ -111,24 +116,11 @@ class Crawl:
                             (self.session_name not in self.poss_link):
                         # ex. /catalog/books/index.html
                         self.poss_link = urljoin(self.current_url, self.poss_link)
-                    # elif '..' in self.poss_link:
-                    #     # ex. '../folder/page.html'
-                    #     self.poss_link = urljoin(self.current_url, self.poss_link)
-                    # elif self.poss_link.startswith('..'):
-                    #     # ex. ../../page-1.html
-                    #     # self.poss_link = find_abs_path(self.current_url, self.poss_link)
-                    #     self.poss_link = urljoin(self.current_url, self.poss_link)
-                    # elif self.poss_link[0] in string.ascii_letters and '/' in self.poss_link:
-                    #     # ex. content/media/index.html
-                    #     self.poss_link = urljoin(self.current_url, self.poss_link)
                 except IndexError as err:
                     # print(f'Error: {err}', file=sys.stderr)
                     # print(f'poss link: {self.poss_link}', file=sys.stderr)
                     # print(f'Anchor: {anchor}', file=sys.stderr)
                     continue
-
-                # lower poss_link to avoid duplicate links with different casing
-                # self.poss_link = self.poss_link.lower()
 
                 # Add the new_urls to the new_urls and print out that a link was added
                 if self.is_poss_link_a_link():
@@ -140,8 +132,7 @@ class Crawl:
 
                     # add the link to new_urls
                     self.add_to_new_urls(self.poss_link)
-                    # print(f'New URL Added: {self.poss_link}')
-                    try:  # fixme: fix this key error
+                    try:  # fixme: fix this key error - should be working now, test me
                         self.add_queue_counter()
                     except KeyError:
                         print(f'KeyError: Line 148 did not work, Session Name: {self.session_name}, Current Url: {self.current_url}, Possible Link: {self.poss_link}')
@@ -199,14 +190,13 @@ class Crawl:
 
             # Don't set response if the content is above a certain size in bytes
             if len(response.content) >= 20_000_000:
-                self.buggy_url_list.append(self.current_url)
                 self.response = None
-            elif response.history and status_code in range(200, 226):
+            elif response.history and response.ok:
                 # if the response was redirected to a new url and 200 status code
                 self.current_url = response.url
                 self.response = response.text
                 self.add_url_counter()
-            elif status_code in range(200, 226):
+            elif response.ok:
                 # if the response has a successful status code
                 try:
                     self.response = response.text
@@ -214,29 +204,14 @@ class Crawl:
                 except KeyError:
                     self.buggy_url_list.append(self.current_url)
                     self.response = None
-            elif status_code in range(300, 511):
+            else:
                 # if the response was redirected, or had a client or server error
                 self.buggy_url_list.append(self.current_url)
                 self.response = None
-
-            # if status_code != 200:
-            #     # Add the current new_urls and new link to the the debug dictionary and print out the status code
-            #     # print(f'Status Code Error: {self.current_url}: {status_code}', file=sys.stderr)
-            #     self.buggy_url_list.append(self.current_url)
-            #     self.response = None
-            # else:
-            #     try:
-            #         self.response = response.text
-            #         self.add_url_counter()
-            #     except KeyError:
-            #         self.buggy_url_list.append(self.current_url)
-            #         self.response = None
         except (requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema,
                 requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                 requests.exceptions.Timeout, requests.exceptions.TooManyRedirects) as e:
-            # print(f'Link Error: {e}')
             self.response = None
-            # pass
 
     def add_to_new_urls(self, url):
         """
@@ -311,6 +286,12 @@ class Crawl:
         and buggy_url_list with shelve.
         :return: None
         """
+        # create the directory if it doesn't exit
+        directory_path = './save/crawl'
+        if not os.path.exists(directory_path):
+            os.mkdir(directory_path)
+
+        # save dictionary
         with shelve.open(f'./save/crawl/{self.session_name}.db') as save:
             save['main'] = {
                 'session_name': self.session_name,
@@ -334,13 +315,13 @@ class Crawl:
 
         # begin crawling
         session = self.session_name
+        status = 'crawling'
         try:
             while len(self.new_urls):
                 self.set_current_url()
                 queue = len(self.new_urls)
                 processing = self.current_url
-                status = 'crawling'
-                print(f'|Session:{session}|Status:{status}|Queue:{queue}|Processing:{processing}')
+                stdout.write(f'|Session:{session}|Status:{status}|Queue:{queue}|Processing:{processing}\r')
                 self.set_response_with_html()
                 if self.response:
                     self.get_new_urls_from_html()
@@ -350,12 +331,9 @@ class Crawl:
 
             # crawl complete
             self.save_progress()
-            # print(f'Session - {self.session_name}')
             status = 'crawl complete'
-            print(f'|Session:{session}|Status:{status}|')
-            # print(f'Crawl Status - {status}')
-            # print(f'Crawls Completed: {self.get_total_urls_scraped()}')
-            # self.print_buggy_links()
+            print(f'|Session:{session}|Status:{status}|Urls Scanned: {len(self.processed_urls)}')
+            self.print_buggy_links()
         except KeyboardInterrupt:
             self.print_buggy_links()
         return {'session_name': self.session_name, 'url_counter': self.url_counter, 'debug_dict': self.debug_dict}
