@@ -1,7 +1,9 @@
 """Download all files of n file type from a website"""
 import os.path
+import shelve
 import time
 from urllib.parse import urlparse
+from sys import stdout
 
 import requests
 
@@ -18,6 +20,23 @@ class LinkFileType(Crawl):
                        'Chrome/76.0.3809.100 Safari/537.36')
     }
 
+    attribute_key_list = [
+        'session_name',
+        'result_list',
+        'headers',
+        'response',
+        'current_url',
+        'poss_link',
+        'url_counter',
+        'queue_counter',
+        'url_cap',
+        'queue_counter',
+        'url_cap',
+        'sleep_time',
+        'debug_dict',
+        'buggy_url_list'
+    ]
+
     def __init__(self, new_urls, file_type):
         super().__init__(new_urls)
         if isinstance(file_type, str):
@@ -30,6 +49,7 @@ class LinkFileType(Crawl):
             file_list = [i.strip() for i in file_list]
             self.file_type = file_list
         else:
+            print(type(file_type))
             print('How did you mess this up?')
 
     def downloader(self):
@@ -37,9 +57,11 @@ class LinkFileType(Crawl):
         Download the files from each url in result_list, ex. http://keygenmusic.net/?page=team&teamname=acme&lang=en
         :return: None
         """
+        # TODO: print--> amount of each file type found
+        # TODO: ask the user if they would like to download all of the files
         for file_num, url in enumerate(self.result_list):
             file_num += 1
-            print(f'Downloading Files: {round((file_num/len(self.result_list))* 100)}%', end='\r')
+            print(f'Downloading Files: {round((file_num / len(self.result_list)) * 100)}%', end='\r')
 
             # get the file name
             path = urlparse(url).path
@@ -113,23 +135,23 @@ class LinkFileType(Crawl):
 
     def crawl(self):
         session = self.session_name
+        status = 'crawling'
         try:
             while len(self.new_urls):
                 self.set_current_url()
                 queue = len(self.new_urls)
                 processing = self.current_url
-                status = 'crawling'
-                # print(f'|Session:{session}|Status:{status}|Queue:{queue}|Processing:{processing}')
-                print(f'|Session:{session}|Status:{status}|Queue:{queue}|Files Found: {len(self.result_list)}|Processing:{processing}', end='\r')
+                stdout.write(
+                    f'|Session:{session}|Status:{status}|Queue:{queue}|Files Found: {len(self.result_list)}|Processing:{processing}\r')
                 self.set_response_with_html()
                 if self.response:
                     self.get_new_urls_from_html()
                     time.sleep(self.sleep_time)
-                # self.save_progress()
+                self.save_progress()
                 time.sleep(.1)
 
             # crawl complete
-            # self.save_progress()
+            self.save_progress()
             # print(f'Session - {self.session_name}')
             status = 'crawl complete'
             print(f'|Session:{session}|Status:{status}|')
@@ -141,3 +163,46 @@ class LinkFileType(Crawl):
                 'url_counter': self.url_counter,
                 'debug_dict': self.debug_dict}
 
+    def save_progress(self):
+        """
+        Save the variables new_urls, response, current_url, poss_link,
+        url_counter, queue_counter, url_cap, sleep_time, debug_dict,
+        and buggy_url_list with shelve.
+        :return: None
+        """
+        # create the directory if it doesn't exit
+        directory_path = './save/link_filetype'
+        if not os.path.exists(directory_path):
+            os.mkdir(directory_path)
+
+        # create a buffer dict
+        buffer_save = {'new_urls': self.new_urls, 'file_type': self.file_type}
+        for attribute in self.attribute_key_list:
+            buffer_save[attribute] = getattr(self, attribute)
+
+        # save buffer dict to shelve db
+        with shelve.open(f'{directory_path}/{self.session_name}.db') as save:
+            save['main'] = buffer_save
+
+    @classmethod
+    def from_save(cls, name_session):
+        # create a dead dict with attribute_key_list, key: None
+        attribute_dict = {key: None for key in cls.attribute_key_list}
+
+        # give the dead dict some life from the shelve db
+        with shelve.open(f'./save/link_filetype/{name_session}.db', flag="r") as save:
+            save_dict = save['main']
+
+            # directly grab the arguments needed to create an object
+            new_urls = save_dict.get('new_urls')
+            file_type = save_dict.get('file_type')
+
+            # add attribute to the dead dict
+            for attribute, v in save_dict.items():
+                attribute_dict[attribute] = v
+
+        # create an object to return
+        url = LinkFileType(new_urls, file_type)
+        for k, v in attribute_dict.items():
+            setattr(url, k, v)
+        return url
