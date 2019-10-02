@@ -58,29 +58,34 @@ class LinkFileType(Crawl):
         :return: None
         """
         # TODO: print--> amount of each file type found
-        # TODO: ask the user if they would like to download all of the files
         download_q = input(f'Download Found Files: {len(self.result_list)}<yes|no>').lower()
         if 'y' in download_q:
             print(f'Downloading {len(self.result_list)} files...')
+
+            # check if the session folder name exists, create it if not
+            dir_path = f'./downloads/{self.session_name}'
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+
+            # download files from result_list
             for file_num, url in enumerate(self.result_list):
                 file_num += 1
                 print(f'Downloading File: {file_num} of {len(self.result_list)}|Complete: {round((file_num / len(self.result_list)) * 100)}%', end='\r')
-                # print(f'\rDownloading Files: {round((file_num / len(self.result_list)) * 100)}%')
 
                 # get the file name
                 path = urlparse(url).path
                 path_split = os.path.split(path)
                 file_name = path_split[-1]
 
-                # check if the session folder name exists, create it if not
-                dir_path = f'./downloads/{self.session_name}'
-                if not os.path.exists(dir_path):
-                    os.mkdir(dir_path)
-
                 # download the file
                 r = requests.get(url, stream=True)
                 with open(f'{dir_path}/{file_name}', 'wb') as f:
                     f.write(r.content)
+
+            # delete each entry from new_urls
+            while self.new_urls:
+                self.new_urls.popleft()
+
             print('Downloads Complete', end='\r')
             print(f'Downloads Completed|Number of files downloaded: {len(self.result_list)}')
         else:
@@ -91,7 +96,8 @@ class LinkFileType(Crawl):
         Add the current url if the current url content-type is a match.
         :return: None
         """
-        self.result_list.append(self.current_url)
+        if self.current_url not in self.result_list:
+            self.result_list.append(self.current_url)
 
     def quick_squeeze(self):
         """
@@ -106,24 +112,35 @@ class LinkFileType(Crawl):
         # for each file_type, check if the file_type is in any of the urls in new_urls
         for file_type in self.file_type:
             for url in self.new_urls:
-                if file_type in url:
+                if file_type in url and url not in self.result_list:
                     found_count += 1
                     found_list.append(url)
 
         # check if each url has the correct content-type
         print(f'confirming {found_count} files...this may take awhile...')
         confirm_count = 0
-        for url in found_list:
+        remove_list_index = []
+        for index, url in enumerate(found_list):
             r = requests.get(url).headers['content-type']
             for file_type in self.file_type:
                 if file_type in r:
                     self.result_list.append(url)
                     confirm_count += 1
+                else:
+                    remove_list_index.append(index)
             stdout.write(f'\rConfirmed: {confirm_count}/{found_count}')
 
-        # remove urls from new_urls
+        # remove objects that weren't confirmed from found_list
+        for index in remove_list_index:
+            del found_list[index]
+
+        # remove squeezed urls from new_urls
         for url in found_list:
-            self.new_urls.remove(url)
+            try:
+                self.new_urls.remove(url)
+            except ValueError:  # todo: find out why im getting a ValueError
+                print(bool(url in self.new_urls))
+                print(url, '\n')
 
     def check_file_type(self, response):
         # check file type
@@ -220,13 +237,18 @@ class LinkFileType(Crawl):
         status = 'CRAWLING...'
         try:
             # begin crawling
+            squeeze_count = 0
             while self.new_urls:
+                if not (squeeze_count % 500) and squeeze_count:
+                    print('Squeezing...')
+                    self.quick_squeeze()
                 self.set_current_url()
+
+                # print out stats
                 queue = len(self.new_urls)
                 processing = self.current_url
                 scanned = len(self.new_urls)
                 file_found = len(self.result_list)
-                # p = f'|Session:{session}|Status:{status}|Queue:{queue}|Files Found: {len(self.result_list)}|Processing:{processing}\r'
                 p = f'|Session:{session}|Status:{status}|Scanned:{scanned}|Queue:{queue}|Files Found:{file_found}|\r'
                 stdout.write(p)
                 stdout.flush()
@@ -236,18 +258,24 @@ class LinkFileType(Crawl):
                     time.sleep(self.sleep_time)
                 self.save_progress()
                 # time.sleep(.1)
+                squeeze_count += 1
 
             # crawl complete
             self.save_progress()
-            # print(f'Session - {self.session_name}')
             status = 'crawl complete'
             print(f'|Session:{session}|Status:{status}|')
             self.downloader()
+            self.save_progress()
             # self.print_buggy_links()
         except KeyboardInterrupt:
             # perform a quick squeeze
             self.quick_squeeze()
+            self.save_progress()
+
+            # download files
             self.downloader()
+            self.save_progress()
+
             self.print_buggy_links()
         return {'session_name': self.session_name,
                 'url_counter': self.url_counter,
