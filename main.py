@@ -21,8 +21,12 @@ def resume_crawl(crawl_object):
 
 
 def initiate_scrape_reg(iterable):
-    url_list = iterable[0]
-    regex = iterable[-1]
+    """
+    Use ScrapeReg with the crawl method.
+    :param iterable: a tuple, (url_list, regex)
+    :return: a tuple that contains the session name and a list of results
+    """
+    url_list, regex = iterable
     return ScrapeReg(url_list, regex).crawl()
 
 
@@ -31,8 +35,12 @@ def resume_scrape_reg(scrape_reg_object):
 
 
 def initiate_link_key(iterable):
-    url_list = iterable[0]
-    regex = iterable[-1]
+    """
+    Use LinkKey with the crawl method.
+    :param iterable: a tuple, (url_list, regex)
+    :return: a tuple that contains the session name and a list of results
+    """
+    url_list, regex = iterable
     result_tup = LinkKey(url_list, regex).crawl()
     return result_tup
 
@@ -118,7 +126,7 @@ def main():
 
         def list_or_string(links):
             """
-            Convert the input into a list. If the input has commas,
+            Convert the input into a list. If the input has commas, separate entries from the commas
             convert it to a list.
             :param links: inputted url(s).
             :return: a list of urls or a list with one url
@@ -126,7 +134,7 @@ def main():
             if ',' in links:
                 links = links.split(',')
                 links = [i.strip() for i in links]
-                return links
+                return set(links)
             else:
                 return [links.rstrip()]
 
@@ -151,7 +159,7 @@ def main():
             """
             url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
             url_list = list_or_string(url)
-            # todo: turn url_list into a set list, just in case the same url is added into the input list twice
+            # todo: TEST THIS: turn url_list into a set list, just in case the same url is added into the input list twice
             regex = input('Enter the Regular Expression of the info you would like to extract\n: ').lower()
             url_regex_tup = [(url, regex) for url in url_list]
 
@@ -293,8 +301,7 @@ def main():
             elif 'q' in sesh_response:
                 print('quitting')
                 break
-            else:
-                print('Invalid entry')
+            print('Invalid entry')
     except KeyboardInterrupt:
         print('quitting')
 
