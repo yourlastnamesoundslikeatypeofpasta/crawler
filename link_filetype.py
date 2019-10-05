@@ -57,8 +57,28 @@ class LinkFileType(Crawl):
         Download the files from each url in result_list, ex. http://keygenmusic.net/?page=team&teamname=acme&lang=en
         :return: None
         """
-        # TODO: print--> amount of each file type found
-        download_q = input(f'Download Found Files: {len(self.result_list)}<yes|no>').lower()
+        # print out found files of each file type
+        print('Files Found Breakdown:')
+        for file_type in self.file_type:
+            print(f'\t{file_type}:')
+            match_list = []
+            for url in self.result_list:
+                if file_type in url:
+                    match_list.append(url)
+            if match_list:
+                for match in match_list:
+                    print(f'\t\t-> {match}')
+            else:
+                print('\t\t-> No files found.')
+
+        download_q = input(f'Download All Found Files: {len(self.result_list)} <yes|no>: ').lower()
+
+        # create downloads folder if it doesn't exist
+        path = './downloads'
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        # download files
         if 'y' in download_q:
             print(f'Downloading {len(self.result_list)} files...')
 
@@ -70,7 +90,7 @@ class LinkFileType(Crawl):
             # download files from result_list
             for file_num, url in enumerate(self.result_list):
                 file_num += 1
-                print(f'Downloading File: {file_num} of {len(self.result_list)}|Complete: {round((file_num / len(self.result_list)) * 100)}%', end='\r')
+                print(f'Downloading File: {file_num} of {len(self.result_list)}|Completion: {round((file_num / len(self.result_list)) * 100)}%', end='\r')
 
                 # get the file name
                 path = urlparse(url).path
@@ -89,7 +109,7 @@ class LinkFileType(Crawl):
             print('Downloads Complete', end='\r')
             print(f'Downloads Completed|Number of files downloaded: {len(self.result_list)}')
         else:
-            print(f'Download Aborted')
+            print(f'Download Aborted.')
 
     def add_result(self):
         """
@@ -106,41 +126,49 @@ class LinkFileType(Crawl):
         to be used as a cast net.
         :return: None
         """
-        print('Performing a quick-squeeze!')
+        print('\nPerforming a quick-squeeze!')
         found_list = []
         found_count = 0
         # for each file_type, check if the file_type is in any of the urls in new_urls
         for file_type in self.file_type:
             for url in self.new_urls:
-                if file_type in url and url not in self.result_list:
+                if (file_type in url) and (url not in self.result_list) and (url not in found_list):
                     found_count += 1
                     found_list.append(url)
 
         # check if each url has the correct content-type
-        print(f'confirming {found_count} files...this may take awhile...')
+        if found_count:
+            print(f'confirming {found_count} files...this may take awhile...')
+        else:
+            print('no files found to confirm.')
+            return
+
         confirm_count = 0
-        remove_list_index = []
-        for index, url in enumerate(found_list):
+        remove_list = []
+        for url in found_list:
             r = requests.get(url).headers['content-type']
             for file_type in self.file_type:
                 if file_type in r:
                     self.result_list.append(url)
                     confirm_count += 1
                 else:
-                    remove_list_index.append(index)
-            stdout.write(f'\rConfirmed: {confirm_count}/{found_count}')
+                    if url in remove_list:
+                        continue
+                    remove_list.append(url)
+            stdout.write(f'Confirmed: {confirm_count}/{found_count}\r')
+            stdout.flush()
 
         # remove objects that weren't confirmed from found_list
-        for index in remove_list_index:
-            del found_list[index]
+        for url in remove_list:
+            try:
+                found_list.remove(url)
+            except ValueError:
+                # was throwing a ValueError, most likely multiple entries in remove_list
+                continue
 
         # remove squeezed urls from new_urls
         for url in found_list:
-            try:
-                self.new_urls.remove(url)
-            except ValueError:  # todo: find out why im getting a ValueError
-                print(bool(url in self.new_urls))
-                print(url, '\n')
+            self.new_urls.remove(url)
 
     def check_file_type(self, response):
         # check file type
@@ -240,14 +268,14 @@ class LinkFileType(Crawl):
             squeeze_count = 0
             while self.new_urls:
                 if not (squeeze_count % 500) and squeeze_count:
-                    print('Squeezing...')
+                    print('\nSqueezing...')
                     self.quick_squeeze()
                 self.set_current_url()
 
                 # print out stats
                 queue = len(self.new_urls)
-                processing = self.current_url
-                scanned = len(self.new_urls)
+                # processing = self.current_url
+                scanned = len(self.processed_urls)
                 file_found = len(self.result_list)
                 p = f'|Session:{session}|Status:{status}|Scanned:{scanned}|Queue:{queue}|Files Found:{file_found}|\r'
                 stdout.write(p)
