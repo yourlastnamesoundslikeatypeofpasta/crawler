@@ -283,12 +283,30 @@ def main():
 
         multiprocess(resume_crawl, session_objects)
 
+    def setup_folders():
+        """
+        Build out the directory.
+        :return: None
+        """
+
+        # create downloads
+        if not os.path.exists('downloads'):
+            os.mkdir('downloads')
+
+        # create save and its sub-directories
+        if not os.path.exists('save'):
+            os.mkdir('save')
+
+            # create sub-directories
+            os.mkdir('./save/crawl')
+            os.mkdir('./save/link_filetype')
+            os.mkdir('./save/link_key')
+            os.mkdir('./save/scrape_reg')
+
     print('Welcome to Scraper!')
 
-    # create the save directory if it doesn't exist
-    path = './save/'
-    if not os.path.exists(path):
-        os.mkdir(path)
+    # setup folders
+    setup_folders()
 
     try:
         while True:
