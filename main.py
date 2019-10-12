@@ -1,9 +1,9 @@
 import multiprocessing
 import os
 
-from crawl import Crawl
-from link_key import LinkKey
-from scrape_reg import ScrapeReg
+from scripts.crawl import Crawl
+from scripts.link_key import LinkKey
+from scripts.scrape_reg import ScrapeReg
 
 
 def initiate_crawl(url):

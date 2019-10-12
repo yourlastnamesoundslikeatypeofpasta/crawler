@@ -9,9 +9,9 @@ from tkinter import filedialog
 
 from bs4 import BeautifulSoup
 
-from base_url import base_url
-from get_website_name import get_web_name
-from crawl import Crawl
+from scripts.base_url import base_url
+from scripts.get_website_name import get_web_name
+from scripts.crawl import Crawl
 
 
 class ScrapeReg(Crawl):

@@ -1,19 +1,16 @@
 """A class version of main.py"""
 import os
 import shelve
-import string
-import sys
 import time
 from collections import deque
 from urllib.parse import urljoin
 from sys import stdout
-from random import randint
 
 import requests
 from bs4 import BeautifulSoup
 
-from base_url import base_url
-from get_website_name import get_web_name
+from scripts.base_url import base_url
+from scripts.get_website_name import get_web_name
 
 
 class Crawl:

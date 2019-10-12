@@ -2,17 +2,13 @@
 import os
 import re
 import shelve
-import sys
-import time
 import tkinter
 from tkinter import filedialog
 
 import openpyxl
 
-from bs4 import BeautifulSoup
-
-from base_url import base_url
-from scrape_reg import ScrapeReg
+from scripts.base_url import base_url
+from scripts.scrape_reg import ScrapeReg
 
 
 class LinkKey(ScrapeReg):

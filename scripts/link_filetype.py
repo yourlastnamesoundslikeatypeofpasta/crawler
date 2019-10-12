@@ -7,7 +7,7 @@ from sys import stdout
 
 import requests
 
-from crawl import Crawl
+from scripts.crawl import Crawl
 
 
 class LinkFileType(Crawl):

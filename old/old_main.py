@@ -1,14 +1,13 @@
 """This script crawls through a website, and scrapes each url for an e-mail address"""
 import re
 import sys
-import time
 from collections import deque
 from urllib.parse import urlsplit
 
 import requests
 from bs4 import BeautifulSoup
 
-from base_url import base_url
+from scripts.base_url import base_url
 
 
 def main():
