@@ -4,6 +4,7 @@ import os
 from scripts.crawl import Crawl
 from scripts.link_key import LinkKey
 from scripts.scrape_reg import ScrapeReg
+from scripts.link_filetype import LinkFileType
 
 
 def initiate_crawl(url):
@@ -52,7 +53,11 @@ def resume_link_key(url):
 def main():
 
     def get_session_type():
-        sesh_types = ['Scrape - Get Info <i>', 'Scrape - Get Links <l>']
+        """
+        Ask the user what type of scraping session they would like to initiate.
+        :return: The appropriate class to be used.
+        """
+        sesh_types = ['Scrape - Get Info <i>', 'Scrape - Get Links <l>', 'Download File - Get Files <d>']
         print('What type of session would you like to initiate?')
         print(f'\tTypes:')
         for sesh in sesh_types:
@@ -64,6 +69,8 @@ def main():
                 return ScrapeReg
             elif 'l' in type_resp:
                 return LinkKey
+            elif 'd' in type_resp:
+                return LinkFileType
             else:
                 print('InvalidInput: Enter <i> or <l>')
 
@@ -167,12 +174,33 @@ def main():
                 return LinkKey(url.rstrip(), regex).crawl()
             return multiprocess(initiate_link_key, url_regex_tup)
 
+        def create_link_file_type():
+            """
+            Initiate link_file_type
+            :return: Output of link_file_type.crawl()
+            """
+            # TODO: make sure all of these file types are actually able to be downloaded
+            file_type_list = ['mp3', 'jpeg', 'mp4', 'pdf', 'rar', 'zip', 'csv',
+                              'txt', 'wav', 'xlsx', 'xls'
+                              ]
+            file_type_dict = {'Text Files': ['doc', 'docx', 'log', 'msg', 'pages', 'rtf', 'tex', 'txt', 'wpd', 'wps'],
+                              'Data Files': ['csv', 'dat', 'key', 'pps', 'ppt', 'pptx', 'xml', 'tar', 'vcf', 'xml'],
+                              'Audio Files': ['aif', 'iff', 'm3u', 'm4a', 'mid', 'mp3', 'mpa', 'wav', 'wma'],
+                              'Video Files': ['avi', 'flv', 'm4v', 'mov', 'mp4', 'mpg', 'srt', 'swf', 'vob', 'wmv'],
+                              'Speadsheet Files': ['xlr', 'xls', 'xlsx'],
+                              'Compressed Files': ['7z', 'cbr', 'deb', 'gz', 'rar', 'tar.gz', 'zip', 'zipx'],
+                              'Disk Image Files': ['bin', 'cue', 'dmg', 'iso', 'mdf', 'vcd']
+                              }
+            get_file_type = input('Which file types would you like to download? ')
+
         sesh_type = get_session_type()
 
         if sesh_type == ScrapeReg:
             create_scrape_reg()
         elif sesh_type == LinkKey:
             create_link_key()
+        elif sesh_type == LinkFileType:
+            create_link_file_type()
 
     def resume_sesh():
         """
