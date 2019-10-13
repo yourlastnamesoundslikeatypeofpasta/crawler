@@ -42,7 +42,7 @@ class LinkFileType(Crawl):
         if isinstance(file_type, str):
             self.file_type = [file_type.strip()]
         elif isinstance(file_type, list):
-            file_type = [i.strip() for i in file_type]
+            # file_type = [i.strip() for i in file_type]
             self.file_type = file_type
         elif isinstance(file_type, str) and ',' in file_type:
             file_list = file_type.split(',')
@@ -174,7 +174,7 @@ class LinkFileType(Crawl):
         # check file type
         content_type = response.headers['content-type']
         for file_type in self.file_type:
-            if file_type in content_type or file_type in self.current_url:
+            if (file_type in content_type) or (file_type in self.current_url) or (file_type == content_type):
                 self.add_result()
 
     def set_response_with_html(self):
@@ -226,6 +226,7 @@ class LinkFileType(Crawl):
         # create the directory if it doesn't exit
         directory_path = './save/link_filetype'
         if not os.path.exists(directory_path):
+            os.mkdir('save')
             os.mkdir(directory_path)
 
         # create a buffer dict
