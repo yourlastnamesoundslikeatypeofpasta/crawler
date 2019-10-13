@@ -30,7 +30,6 @@ class ScrapeReg(Crawl):
         if isinstance(new_urls, str):
             new_urls = [new_urls]
         for link in new_urls:
-            print('blag', self.session_name, link, new_urls)
             self.result_dict.setdefault(base_url(link), [])
 
     def get_result_with_html_parser(self):
