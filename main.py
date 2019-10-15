@@ -52,6 +52,21 @@ def resume_link_key(url):
     pass
 
 
+def initiate_link_file_type(iterable):
+    """
+    Use the LinkFileType class in conjunction with the crawl method.
+    :param iterable: a tuple, (url_list, file_dict)
+    :return: a tuple containing the session name and a list of results
+    """
+    url_list, file_dict = iterable
+    result_tup = LinkFileType(url_list, file_dict).crawl()
+    return result_tup
+
+
+def resume_link_file_type(crawl_object):
+    return crawl_object.crawl()
+
+
 def main():
 
     def get_session_type():
@@ -159,7 +174,8 @@ def main():
 
             if len(url_list) == 1:
                 return ScrapeReg(url, regex).crawl()
-            return multiprocess(initiate_scrape_reg, url_regex_tup)
+            else:
+                return multiprocess(initiate_scrape_reg, url_regex_tup)
 
         def create_link_key():
             """
@@ -174,107 +190,128 @@ def main():
 
             if len(url_list) == 1:
                 return LinkKey(url.rstrip(), regex).crawl()
-            return multiprocess(initiate_link_key, url_regex_tup)
+            else:
+                return multiprocess(initiate_link_key, url_regex_tup)
 
         def create_link_file_type():
             """
             Initiate link_file_type
             :return: Output of link_file_type.crawl()
             """
+
+            def create_file_dict():
+                """
+                Create a dictionary of the file types to search for using user input.
+                :return: dict(file_extension: mimetype)
+                """
+
+                def get_extensions():
+                    """
+                    User inputs extensions they would like to download.
+                    :return: dict(file_extension: mimetype)
+                    """
+                    file_dict = {}
+                    while True:
+                        # print the file_dict
+                        if file_dict:
+                            print('File to scrape:')
+                            for file in file_dict.keys():
+                                print(f'\t--> {file}')
+                        get_file_type = input('Enter a file type? Enter <s> to start crawl\n: ').lower()
+
+                        if get_file_type:
+                            # exit chain
+                            if get_file_type == 's':
+                                if not file_dict:
+                                    print("You didn't enter any valid file types. Exiting.")
+                                    return
+                                break
+                            elif get_file_type == 'h':
+                                for key in mimetypes.types_map.keys():
+                                    print(key)
+
+                            # confirm the extension is a mimetype
+                            for extension, mtype in mimetypes.types_map.items():
+
+                                # add a leading dot if there isn't one
+                                if not get_file_type.startswith('.'):
+                                    get_file_type = '.' + get_file_type
+
+                                # check if there's a match, add to dict if is
+                                if get_file_type in extension:
+                                    file_dict[get_file_type] = mtype
+                                    break
+                        else:
+                            print('File type is invalid. Enter <h> for valid file types.', file=sys.stderr)
+                    return file_dict
+
+                def confirm_extensions(file_dict):
+                    """
+                    Confirm the file dictionary is correct with the user. Delete entry's the user would like to remove
+                    :param file_dict: dict(file_extension: mimetype)
+                    :return: dict(file_extension: mimetype)
+                    """
+
+                    # confirm list
+                    while True:
+                        print('Final File List:')
+                        for file in file_dict.keys():
+                            print(f'\t--> {file}')
+
+                        # confirm list
+                        ans = input('Press <ENTER> to begin crawl. Enter <D> to delete a file.').lower()
+                        if not ans:
+                            break
+
+                        if 'd' in ans:
+                            while True:
+                                print('Enter the file extension (accurately) to be deleted. Enter <q> to exit.')
+                                for file in file_dict.keys():
+                                    print(f'--> {file}')
+
+                                # get index number, and delete the entry
+                                res = input(': ').lower()
+
+                                # exit chain
+                                if 'q' in res:
+                                    break
+
+                                # delete chain
+                                try:
+                                    del file_dict[res]
+                                    print(f'Removed {res}', file=sys.stderr)
+                                    break
+                                except KeyError:
+                                    print('Make sure your entry is accurate!')
+                    print('File list: CONFIRMED!')
+                    return file_dict
+
+                extension_dict = get_extensions()
+                confirm_extension = confirm_extensions(extension_dict)
+                return confirm_extension
             # TODO: create a function that creates a user list. this function can be used at the top of
             #   create_scrape_reg, create_link_key and create_link_file_type
             url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
             url_list = list_or_string(url)
             # build a file list
-            # TODO: split this function into two separate functions
-            file_dict = {}
-            while True:
-                # print the file_dict
-                if file_dict:
-                    print('File to scrape:')
-                    for file in file_dict.keys():
-                        print(f'\t--> {file}')
-                get_file_type = input('Enter a file type? Enter <s> to start crawl\n: ').lower()
+            file_dict = create_file_dict()
 
-                if get_file_type:
-                    # exit chain
-                    if get_file_type == 's':
-                        if not file_dict:
-                            print("You didn't enter any valid file types. Exiting.")
-                            return
-                        break
-                    elif get_file_type == 'h':
-                        for key in mimetypes.types_map.keys():
-                            print(key)
-
-                    # confirm the extension is a mimetype
-                    for extension, mtype in mimetypes.types_map.items():
-
-                        # add a leading dot if there isn't one
-                        if not get_file_type.startswith('.'):
-                            get_file_type = '.' + get_file_type
-
-                        # check if there's a match, add to dict if is
-                        if get_file_type in extension:
-                            file_dict[get_file_type] = mtype
-                            break
-                else:
-                    print('File type is invalid. Enter <h> for valid file types.', file=sys.stderr)
-
-            # confirm list
-            while True:
-                print('Final File List:')
-                for file in file_dict.keys():
-                    print(f'\t--> {file}')
-
-                # confirm list
-                ans = input('Press <ENTER> to begin crawl. Enter <D> to delete a file.').lower()
-                if not ans:
-                    mime_list = [i for i in file_dict.values()]
-                    break
-
-                if 'd' in ans:
-                    while True:
-                        print('Enter the file extension (accurately) to be deleted. Enter <q> to exit.')
-                        for file in file_dict.keys():
-                            print(f'--> {file}')
-
-                        # get index number, and delete the entry
-                        res = input(': ').lower()
-
-                        # exit chain
-                        if 'q' in res:
-                            break
-
-                        # delete chain
-                        try:
-                            del file_dict[res]
-                            print(f'Removed {res}', file=sys.stderr)
-                            break
-                        except KeyError:
-                            print('Make sure your entry is accurate!')
+            # remove this list when LinkFileType has been refactored
+            extension_list = [i for i in file_dict.keys()]
 
             # begin crawl
             if len(url_list) == 1:
-                return LinkFileType(url.rstrip(), mime_list)
+                return LinkFileType(url.rstrip(), extension_list).crawl()
 
-            # TODO: finish the multiprocessing portion
+                # use the line below when LinkFileType has been refactored to handle a dictionary
+                # return LinkFileType(url.rstrip(), file_dict)
+            else:
+                url_extension_list_tup = [(url, extension_list) for url in url_list]
+                return multiprocess(initiate_link_file_type, url_extension_list_tup)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                # use the lines below when LinkFileType has been refactored to handle a dictionary
+                # url_file_dict_tup = [(url, file_dict) for url in url_list]
+                # return multiprocess(initiate_link_file_type, url_file_dict_tup)
 
         sesh_type = get_session_type()
 
@@ -432,7 +469,7 @@ def main():
                 break
             print('Invalid entry')
     except KeyboardInterrupt:
-        print('quitting')
+        print('quitting...')
 
 
 if __name__ == '__main__':
