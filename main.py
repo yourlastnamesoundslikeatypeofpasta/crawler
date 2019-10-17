@@ -351,12 +351,25 @@ def main():
             for file_name in file_list:
                 print(f'\t{file_name}')
 
-        def get_saved_sessions():
+        def get_saved_sessions(sesh_type):
             """
             Get a list of the saved .db files in the ./save directory
             :return: A list of the name of the saved .db files
             """
-            path = './save'
+            # use the appropriate path
+            if sesh_type == Crawl:
+                path = './save/crawl'
+            elif sesh_type == LinkKey:
+                path = './save/link_key'
+            elif sesh_type == LinkFileType:
+                path = './save/link_filetype'
+            elif sesh_type == ScrapeReg:
+                path = './save/scrape_reg'
+            else:
+                print('Impossible!')
+                print(sesh_type)
+                return
+
             dirs = os.listdir(path)
             printed_files_list = []
             for file in dirs:
@@ -370,26 +383,27 @@ def main():
                     printed_files_list.append(filename)
             return printed_files_list
 
-        def create_crawl_objects(sesh_list):
+        def create_crawl_objects(sesh_type, sesh_list):
             """
             Create crawl objects for each file_name in session list.
+            :param sesh_type: the class being used to crawl
             :param sesh_list: list of sessions to create crawl objects
             :return: A list of crawl objects
             """
-            return [Crawl.from_save(session) for session in sesh_list]
+            return [sesh_type.from_save(session) for session in sesh_list]
 
-        def get_session_list():
+        def get_session_list(sesh_type):
             """
             Get a list of sessions that the user wishes to resume.
+            :param sesh_type: class being used
             :return: A list of session names
             """
             session_list = []
-            printed_files_list = get_saved_sessions()
+            printed_files_list = get_saved_sessions(sesh_type)
             while True:
                 if not printed_files_list:
                     # if the user enters in all of the saved sessions
-                    print(
-                        'You have added all of the session saves to your resume list, press [ENTER] to initiate crawls.')
+                    print('You have added all of the session saves to your resume list, press [ENTER] to initiate crawls')
                     input(': ')
                     break
                 print_saved_sessions(printed_files_list)
@@ -414,14 +428,14 @@ def main():
         print('|Enter the sessions you wish to resume|Enter [Q] to initiate crawl sessions')
 
         # get a list of session the user wishes to resume
-        session_list = get_session_list()
+        session_list = get_session_list(sesh_type)
 
         # if the user didn't add any session names to the Resume Session List
         if not session_list:
             return print('Sessions not added to Resume Session List')
 
         # create a list of crawl objects
-        session_objects = create_crawl_objects(session_list)
+        session_objects = create_crawl_objects(sesh_type, session_list)
 
         # if the user wishes to resume crawl of one list, don't use multiprocessing
         if len(session_list) == 1:
