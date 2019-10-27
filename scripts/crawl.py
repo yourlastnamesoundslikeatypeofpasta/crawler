@@ -383,7 +383,7 @@ class Crawl:
                     for link in buggy_link_list:
                         print(f'\t\tLink: {link}')
         else:
-            print('No buggy links found!')
+            return
 
     @staticmethod
     def clear():
