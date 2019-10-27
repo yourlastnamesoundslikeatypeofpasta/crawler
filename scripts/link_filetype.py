@@ -240,7 +240,7 @@ class LinkFileType(Crawl):
             buffer_save[attribute] = getattr(self, attribute)
 
         # save buffer dict to shelve db
-        with shelve.open(f'{directory_path}/{self.session_name}.db') as save:
+        with shelve.open(f'{directory_path}/{self.session_name}') as save:
             save['main'] = buffer_save
 
     @classmethod
@@ -249,7 +249,7 @@ class LinkFileType(Crawl):
         attribute_dict = {key: None for key in cls.attribute_key_list}
 
         # give the dead dict some life from the shelve db
-        with shelve.open(f'./save/link_filetype/{name_session}.db', flag="r") as save:
+        with shelve.open(f'./save/link_filetype/{name_session}', flag="r") as save:
             save_dict = save['main']
 
             # directly grab the arguments needed to create an object
