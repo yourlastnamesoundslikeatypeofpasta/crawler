@@ -69,16 +69,32 @@ def resume_link_file_type(crawl_object):
 
 def main():
 
+    def get_urls():
+        """
+        Get url input from user.
+        :return: list[url...]
+        """
+        url_input = input('Enter a url or a list of urls seperated by a comma\n: ').strip()
+
+        # split the data by commas if the user inputted multiple urls
+        if ',' in url_input:
+            links = url_input.split(',')
+            links = set([i.strip() for i in links])
+            return url_input, links
+
+        return url_input, [url_input]
+
     def get_session_type():
         """
         Ask the user what type of scraping session they would like to initiate.
         :return: The appropriate class to be used.
         """
-        sesh_types = ['Scrape - Get Info <i>', 'Scrape - Get Links <l>', 'Download File - Get Files <d>']
-        print('What type of session would you like to initiate?')
-        print(f'\tTypes:')
+        sesh_types = ['Scrape - Get Info - Enter <i>',
+                      'Scrape - Get Links - Enter - <n>',
+                      'Download File - Get Files - Enter <d>']
+        print('\nSession Type:')
         for sesh in sesh_types:
-            print(f'\t\t{sesh}')
+            print(f'\t{sesh}')
 
         while True:
             type_resp = input(': ').lower()
@@ -148,28 +164,13 @@ def main():
         :return: None
         """
 
-        def list_or_string(links):
-            """
-            Convert the input into a list. If the input has commas, separate entries from the commas
-            convert it to a list.
-            :param links: inputted url(s).
-            :return: a list of urls or a list with one url
-            """
-            if ',' in links:
-                links = links.split(',')
-                links = [i.strip() for i in links]
-                return set(links)
-            else:
-                return [links.rstrip()]
-
         def create_scrape_reg():
             """
             Initiate scrape_reg
             :return: Output of scrape_reg.crawl()
             """
-            url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
-            url_list = list_or_string(url)
-            regex = input('Enter the Regular Expression of the info you would like to extract\n: ').lower()
+            url, url_list = get_urls()
+            regex = input('Enter the Regular Expression of the info you would like to extract\n: ')
             url_regex_tup = [(url, regex) for url in url_list]
 
             if len(url_list) == 1:
@@ -182,10 +183,8 @@ def main():
             Initiate link_key
             :return: Output of link_key.crawl()
             """
-            url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
-            url_list = list_or_string(url)
-            # todo: TEST THIS: turn url_list into a set list, just in case the same url is added into the input list twice
-            regex = input('Enter the Regular Expression of the info you would like to extract\n: ').lower()
+            url, url_list = get_urls()
+            regex = input('Enter the Regular Expression of the info you would like to extract\n: ')
             url_regex_tup = [(url, regex) for url in url_list]
 
             if len(url_list) == 1:
@@ -217,7 +216,12 @@ def main():
                             print('File to scrape:')
                             for file in file_dict.keys():
                                 print(f'\t--> {file}')
-                        get_file_type = input('Enter a file type? Enter <s> to start crawl\n: ').lower()
+                        else:
+                            print('Common File Types Example:')
+                            com_file_list = ['.zip', '.jpg', '.rar', '.jpg', '.mov', '.gif']
+                            for file in com_file_list:
+                                print(f'\t{file}')
+                        get_file_type = input('Enter a file type? Enter <s> to start crawl\n: ')
 
                         if get_file_type:
                             # exit chain
@@ -291,8 +295,7 @@ def main():
                 return confirm_extension
             # TODO: create a function that creates a user list. this function can be used at the top of
             #   create_scrape_reg, create_link_key and create_link_file_type
-            url = input('Enter URL or a list of urls separated by a comma\n: ').lower()
-            url_list = list_or_string(url)
+            url, url_list = get_urls()
             # build a file list
             file_dict = create_file_dict()
 
@@ -301,17 +304,17 @@ def main():
 
             # begin crawl
             if len(url_list) == 1:
-                return LinkFileType(url.rstrip(), extension_list).crawl()
+                # return LinkFileType(url.rstrip(), extension_list).crawl()
 
                 # use the line below when LinkFileType has been refactored to handle a dictionary
-                # return LinkFileType(url.rstrip(), file_dict)
+                return LinkFileType(url.rstrip(), file_dict).crawl()
             else:
                 url_extension_list_tup = [(url, extension_list) for url in url_list]
-                return multiprocess(initiate_link_file_type, url_extension_list_tup)
+                # return multiprocess(initiate_link_file_type, url_extension_list_tup)
 
                 # use the lines below when LinkFileType has been refactored to handle a dictionary
-                # url_file_dict_tup = [(url, file_dict) for url in url_list]
-                # return multiprocess(initiate_link_file_type, url_file_dict_tup)
+                url_file_dict_tup = [(url, file_dict) for url in url_list]
+                return multiprocess(initiate_link_file_type, url_file_dict_tup)
 
         sesh_type = get_session_type()
 
@@ -351,12 +354,25 @@ def main():
             for file_name in file_list:
                 print(f'\t{file_name}')
 
-        def get_saved_sessions():
+        def get_saved_sessions(sesh_type):
             """
             Get a list of the saved .db files in the ./save directory
             :return: A list of the name of the saved .db files
             """
-            path = './save'
+            # use the appropriate path
+            if sesh_type == Crawl:
+                path = './save/crawl'
+            elif sesh_type == LinkKey:
+                path = './save/link_key'
+            elif sesh_type == LinkFileType:
+                path = './save/link_filetype'
+            elif sesh_type == ScrapeReg:
+                path = './save/scrape_reg'
+            else:
+                print('Impossible!')
+                print(sesh_type)
+                return
+
             dirs = os.listdir(path)
             printed_files_list = []
             for file in dirs:
@@ -370,26 +386,27 @@ def main():
                     printed_files_list.append(filename)
             return printed_files_list
 
-        def create_crawl_objects(sesh_list):
+        def create_crawl_objects(sesh_type, sesh_list):
             """
             Create crawl objects for each file_name in session list.
+            :param sesh_type: the class being used to crawl
             :param sesh_list: list of sessions to create crawl objects
             :return: A list of crawl objects
             """
-            return [Crawl.from_save(session) for session in sesh_list]
+            return [sesh_type.from_save(session) for session in sesh_list]
 
-        def get_session_list():
+        def get_session_list(sesh_type):
             """
             Get a list of sessions that the user wishes to resume.
+            :param sesh_type: class being used
             :return: A list of session names
             """
             session_list = []
-            printed_files_list = get_saved_sessions()
+            printed_files_list = get_saved_sessions(sesh_type)
             while True:
                 if not printed_files_list:
                     # if the user enters in all of the saved sessions
-                    print(
-                        'You have added all of the session saves to your resume list, press [ENTER] to initiate crawls.')
+                    print('You have added all of the session saves to your resume list, press [ENTER] to initiate crawls')
                     input(': ')
                     break
                 print_saved_sessions(printed_files_list)
@@ -414,14 +431,14 @@ def main():
         print('|Enter the sessions you wish to resume|Enter [Q] to initiate crawl sessions')
 
         # get a list of session the user wishes to resume
-        session_list = get_session_list()
+        session_list = get_session_list(sesh_type)
 
         # if the user didn't add any session names to the Resume Session List
         if not session_list:
             return print('Sessions not added to Resume Session List')
 
         # create a list of crawl objects
-        session_objects = create_crawl_objects(session_list)
+        session_objects = create_crawl_objects(sesh_type, session_list)
 
         # if the user wishes to resume crawl of one list, don't use multiprocessing
         if len(session_list) == 1:
@@ -429,7 +446,7 @@ def main():
             outputs = resume_crawl(crawl_object)
             return print(outputs)
 
-        multiprocess(resume_crawl, session_objects)
+        return multiprocess(resume_crawl, session_objects)
 
     def setup_folders():
         """
@@ -451,23 +468,32 @@ def main():
             os.mkdir('./save/link_key')
             os.mkdir('./save/scrape_reg')
 
-    print('Welcome to Scraper!')
+    print('Crawler - Alpha')
 
     # setup folders
     setup_folders()
 
     try:
         while True:
-            print('[NEW SESSION] or [RESUME SESSION] or [QUIT] [N/R/Q]')
+            # print out session types
+            sesh_list = ['New Session', 'Resume Session', 'Quit']
+            print('\nSession Mode:')
+            for sesh in sesh_list:
+                print(f'\t{sesh} - Enter <{sesh[0].lower()}>')
+
             sesh_response = input(': ').lower()
-            if 'n' in sesh_response:
-                new_sesh()
-            elif 'r' in sesh_response:
-                resume_sesh()
-            elif 'q' in sesh_response:
-                print('quitting')
-                break
-            print('Invalid entry')
+            if len(sesh_response) == 1:
+                if 'n' in sesh_response:
+                    new_sesh()
+                elif 'r' in sesh_response:
+                    resume_sesh()
+                elif 'q' in sesh_response:
+                    print('quitting')
+                    break
+                else:
+                    print('Invalid Entry!')
+            else:
+                print('Invalid Entry!')
     except KeyboardInterrupt:
         print('quitting...')
 
