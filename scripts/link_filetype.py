@@ -38,78 +38,82 @@ class LinkFileType(Crawl):
     ]
 
     def __init__(self, new_urls, file_type):
+        """
+        Init.
+        :param new_urls: list[url, url_1]
+        :param file_type: dict['.extenstion': 'mimetype']
+        """
         super().__init__(new_urls)
-        if isinstance(file_type, str):
-            self.file_type = [file_type.strip()]
-        elif isinstance(file_type, list):
-            # file_type = [i.strip() for i in file_type]
-            self.file_type = file_type
-        elif isinstance(file_type, str) and ',' in file_type:
-            file_list = file_type.split(',')
-            file_list = [i.strip() for i in file_list]
-            self.file_type = file_list
-        else:
-            print(type(file_type))
-            print('How did you mess this up?')
+        self.file_type = file_type
+        self.ext_list = [ext for ext in file_type.keys()]
+        self.mime_list = [m_type for m_type in file_type.values()]
 
     def downloader(self):
         """
         Download the files from each url in result_list, ex. http://keygenmusic.net/?page=team&teamname=acme&lang=en
         :return: None
         """
-        # print out found files of each file type
-        print('Files Found Breakdown:')
-        for file_type in self.file_type:
-            print(f'\t{file_type}:')
-            match_list = []
-            for url in self.result_list:
-                if file_type in url:
-                    match_list.append(url)
-            if match_list:
-                for match in match_list:
-                    print(f'\t\t-> {match}')
+        if self.result_list:
+            # print out found files of each file type
+            print('Files Found Breakdown:')
+            for ext in self.ext_list:
+                print(f'\t{ext}:')
+                match_list = []
+                for url in self.result_list:
+                    if ext in url:
+                        match_list.append(url)
+                if match_list:
+                    for match in match_list:
+                        print(f'\t\t-> {match}')
+                else:
+                    print('\t\t-> No files found.')
+
+            # ask the user if they would like to download the found files
+            download_q = input(f'Download All Found Files: {len(self.result_list)} <yes|no>: ').lower()
+
+            # create downloads folder if it doesn't exist
+            path = './downloads'
+            if not os.path.exists(path):
+                os.mkdir(path)
+
+            # download files
+            if 'y' in download_q:
+                print(f'Downloading {len(self.result_list)} files...')
+
+                # check if the session folder name exists, create it if not
+                dir_path = f'./downloads/{self.session_name}'
+                if not os.path.exists(dir_path):
+                    os.mkdir(dir_path)
+
+                # download files from result_list
+                for file_num, url in enumerate(self.result_list):
+                    file_num += 1
+                    print(f'Downloading File: {file_num} of {len(self.result_list)}|Completion: {round((file_num / len(self.result_list)) * 100)}%', end='\r')
+
+                    # get the file name
+                    path = urlparse(url).path
+                    path_split = os.path.split(path)
+                    file_name = path_split[-1]
+
+                    # download the file
+                    r = requests.get(url, stream=True)
+                    try:
+                        with open(f'{dir_path}/{file_name}', 'wb') as f:
+                            f.write(r.content)
+                    except PermissionError:
+                        print('Permission Error: Try running as root...quitting...')
+                        return
+
+                # delete each entry from new_urls
+                while self.new_urls:
+                    self.new_urls.popleft()
+
+                print('Downloads Complete', end='\r')
+                print(f'Downloads Completed|Number of files downloaded: {len(self.result_list)}')
             else:
-                print('\t\t-> No files found.')
-
-        download_q = input(f'Download All Found Files: {len(self.result_list)} <yes|no>: ').lower()
-
-        # create downloads folder if it doesn't exist
-        path = './downloads'
-        if not os.path.exists(path):
-            os.mkdir(path)
-
-        # download files
-        if 'y' in download_q:
-            print(f'Downloading {len(self.result_list)} files...')
-
-            # check if the session folder name exists, create it if not
-            dir_path = f'./downloads/{self.session_name}'
-            if not os.path.exists(dir_path):
-                os.mkdir(dir_path)
-
-            # download files from result_list
-            for file_num, url in enumerate(self.result_list):
-                file_num += 1
-                print(f'Downloading File: {file_num} of {len(self.result_list)}|Completion: {round((file_num / len(self.result_list)) * 100)}%', end='\r')
-
-                # get the file name
-                path = urlparse(url).path
-                path_split = os.path.split(path)
-                file_name = path_split[-1]
-
-                # download the file
-                r = requests.get(url, stream=True)
-                with open(f'{dir_path}/{file_name}', 'wb') as f:
-                    f.write(r.content)
-
-            # delete each entry from new_urls
-            while self.new_urls:
-                self.new_urls.popleft()
-
-            print('Downloads Complete', end='\r')
-            print(f'Downloads Completed|Number of files downloaded: {len(self.result_list)}')
+                print(f'Download Aborted.')
         else:
-            print(f'Download Aborted.')
+            print('No Files Found.')
 
     def add_result(self):
         """
@@ -126,11 +130,11 @@ class LinkFileType(Crawl):
         to be used as a cast net.
         :return: None
         """
-        print('\nPerforming a quick-squeeze!')
+        print('\nLooking for files in queue list...')
         found_list = []
         found_count = 0
         # for each file_type, check if the file_type is in any of the urls in new_urls
-        for file_type in self.file_type:
+        for file_type in self.ext_list:
             for url in self.new_urls:
                 if (file_type in url) and (url not in self.result_list) and (url not in found_list):
                     found_count += 1
@@ -140,15 +144,14 @@ class LinkFileType(Crawl):
         if found_count:
             print(f'confirming {found_count} files...this may take awhile...')
         else:
-            print('no files found to confirm.')
             return
 
         confirm_count = 0
         remove_list = []
         for url in found_list:
-            r = requests.get(url).headers['content-type']
-            for file_type in self.file_type:
-                if file_type in r:
+            content_type = requests.get(url).headers['content-type']
+            for m_type in self.mime_list:
+                if m_type in content_type:
                     self.result_list.append(url)
                     confirm_count += 1
                 else:
@@ -173,14 +176,16 @@ class LinkFileType(Crawl):
     def check_file_type(self, response):
         # check file type
         content_type = response.headers['content-type']
-        for file_type in self.file_type:
-            if (file_type in content_type) or (file_type in self.current_url) or (file_type == content_type):
+
+        for m_type in self.mime_list:
+            if m_type == content_type:
                 self.add_result()
 
     def set_response_with_html(self):
         url = self.current_url
         try:
             response = requests.get(url, headers=self.headers, timeout=5)
+
             # todo: add a way to check the content type and content length and then filter from with this function
             status_code = response.status_code
 
@@ -292,6 +297,7 @@ class LinkFileType(Crawl):
             # crawl complete
             self.save_progress()
             status = 'crawl complete'
+            print('')
             print(f'|Session:{session}|Status:{status}|')
             self.downloader()
             self.save_progress()
