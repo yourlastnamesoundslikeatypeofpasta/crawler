@@ -88,8 +88,11 @@ class LinkKey(ScrapeReg):
             debug_dict = save_dict.get('debug_dict')
             buggy_url_list = save_dict.get('buggy_url_list')
 
-            # create a ScrapeReg object
-            url = ScrapeReg(new_urls, regex)
+            # recreate a LinkKey object so the calling code receives the
+            # correct type.  Returning the base ``ScrapeReg`` class here
+            # prevented access to ``LinkKey`` specific behaviour when
+            # resuming a session.
+            url = LinkKey(new_urls, regex)
             url.session_name = session_name
             url.result_dict = result_dict
             url.response = response
